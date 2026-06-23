@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package runit_maps.v1;
+
+// ========================================================================
+// Services
+// ========================================================================
+
+service RoutingService {
+  rpc Route(RouteRequest) returns (RouteResponse);
+  rpc HealthCheck(HealthRequest) returns (HealthResponse);
+}
+
+service AdminService {
+  rpc ReloadTiles(ReloadTilesRequest) returns (ReloadTilesResponse);
+  rpc GetTileStatus(TileStatusRequest) returns (TileStatusResponse);
+}
+
+// ========================================================================
+// Enums
+// ========================================================================
+
+enum Costing {
+  COSTING_UNSPECIFIED = 0;
+  AUTO = 1;
+  PEDESTRIAN = 2;
+  BICYCLE = 3;
+  CAMPUS_PEDESTRIAN = 4;
+}
+
+enum Units {
+  UNITS_UNSPECIFIED = 0;
+  METRIC = 1;
+  IMPERIAL = 2;
+}
+
+enum ManeuverType {
+  MANEUVER_UNSPECIFIED = 0;
+  TURN = 1;
+  CONTINUE = 2;
+  DEPART = 3;
+  ARRIVE = 4;
+  ROUNDABOUT_ENTER = 5;
+  ROUNDABOUT_EXIT = 6;
+  CROSS_STREET = 7;
+  BUILDING_ENTRY = 8;
+}
+
+enum TileBuildStatus {
+  TILE_STATUS_UNSPECIFIED = 0;
+  IDLE = 1;
+  BUILDING = 2;
+  ERROR = 3;
+}
+
+// ========================================================================
+// Common messages
+// ========================================================================
+
+message LatLng {
+  double lat = 1;
+  double lng = 2;
+}
+
+// ========================================================================
+// Routing Service
+// ========================================================================
+
+message RouteRequest {
+  LatLng origin = 1;
+  LatLng destination = 2;
+  Costing costing = 3;
+  Units units = 4;
+  bool include_steps = 5;
+  repeated LatLng waypoints = 6;
+  string campus_id = 7;
+  bool avoid_stairs = 8;
+  double walking_speed_kmh = 9;
+}
+
+message RouteStep {
+  int32 step_number = 1;
+  string instruction = 2;
+  string street_name = 3;
+  LatLng start_location = 4;
+  string encoded_polyline = 5;
+  float distance_meters = 6;
+  float duration_seconds = 7;
+  ManeuverType maneuver_type = 8;
+  string direction = 9;
+  bool is_custom_path = 10;
+}
+
+message RouteSummary {
+  float distance_meters = 1;
+  float duration_seconds = 2;
+  float distance_km = 3;
+  string duration_formatted = 4;
+}
+
+message AlternativeRoute {
+  string encoded_polyline = 1;
+  RouteSummary summary = 2;
+}
+
+message RouteResponse {
+  string encoded_polyline = 1;
+  RouteSummary summary = 2;
+  repeated RouteStep steps = 3;
+  repeated AlternativeRoute alternatives = 4;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool valhalla_connected = 1;
+  uint64 tiles_last_updated = 2;
+  string service_version = 3;
+  repeated string regions = 4;
+}
+
+// ========================================================================
+// Admin Service
+// ========================================================================
+
+message ReloadTilesRequest {
+  string region_id = 1;
+}
+
+message ReloadTilesResponse {
+  string job_id = 1;
+  TileBuildStatus status = 2;
+}
+
+message TileStatusRequest {
+  string region_id = 1;
+}
+
+message RegionTileStatus {
+  string region_id = 1;
+  TileBuildStatus status = 2;
+  optional uint64 last_build_time = 3;
+  optional float last_build_duration_secs = 4;
+  optional string error_message = 5;
+}
+
+message TileStatusResponse {
+  repeated RegionTileStatus regions = 1;
+}

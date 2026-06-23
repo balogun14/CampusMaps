@@ -1,0 +1,35 @@
+{
+  "mjolnir": {
+    "tile_dir": "/data/tiles",
+    "hierarchy": true,
+    "shortcuts": true,
+    "concurrency": 4
+  },
+  "loki": {
+    "actions": ["route", "health"],
+    "logging": {
+      "type": "stdout",
+      "level": "info"
+    }
+  },
+  "thor": {
+    "max_route_distance": 500000,
+    "max_route_time": 3600
+  },
+  "odin": {
+    "markup_formatter": "text",
+    "units": "kilometers",
+    "language": "en-US"
+  },
+  "httpd": {
+    "service": {
+      "listen": "tcp://0.0.0.0:8002"
+    }
+  },
+  "costing": {
+    "pedestrian": {
+      "use_campus_paths": 0.9,
+      "walking_speed": 5.0
+    }
+  }
+}

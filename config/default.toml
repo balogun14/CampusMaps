@@ -1,0 +1,19 @@
+[server]
+grpc_port = 50051
+max_request_size_mb = 4
+
+[valhalla]
+url = "http://localhost:8002"
+timeout_seconds = 10
+max_alternatives = 3
+
+[ingestion]
+download_base_url = "https://download.geofabrik.de/north-america/us"
+tile_dir = "/data/tiles"
+osm_data_dir = "/data/osm"
+custom_paths_dir = "/data/custom_paths"
+regions = ["mit-campus"]
+
+[tracing]
+level = "info"
+format = "json"

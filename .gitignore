@@ -1,0 +1,8 @@
+/target
+/data/tiles/**
+/data/osm/**
+!/data/tiles/.gitkeep
+!/data/osm/.gitkeep
+.env
+*.pbf
+.commandcode/

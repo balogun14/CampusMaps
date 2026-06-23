@@ -1,0 +1,43 @@
+# ============================================================
+# Custom Valhalla image with campus_pedestrian costing plugin
+# ============================================================
+FROM ghcr.io/valhalla/valhalla:latest AS base
+
+# ============================================================
+# Stage 1: Build the custom costing plugin
+# ============================================================
+FROM base AS builder
+
+USER root
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    cmake \
+    build-essential \
+    libsqlite3-dev \
+    libcurl4-openssl-dev \
+    libzmq3-dev \
+    libspatialite-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy campus costing plugin source
+COPY valhalla/campus_cost /tmp/campus_cost
+
+WORKDIR /tmp/campus_cost/build
+RUN cmake .. && make -j$(nproc) && make install
+
+# ============================================================
+# Final image
+# ============================================================
+FROM base
+
+# Copy the custom costing shared library
+COPY --from=builder /usr/local/lib/libcampus_pedestrian.* /usr/local/lib/
+
+# Ensure the library is loadable
+ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
+    CMD curl -f http://localhost:8002/health || exit 1
+
+ENTRYPOINT ["valhalla_service", "/config/valhalla.json"]

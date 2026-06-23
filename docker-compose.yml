@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  # ---------- VALHALLA ROUTING ENGINE ----------
+  valhalla:
+    build:
+      context: .
+      dockerfile: valhalla/Dockerfile.valhalla
+    container_name: runit-valhalla
+    ports:
+      - "127.0.0.1:8002:8002"
+    volumes:
+      - ./config/valhalla.json:/config/valhalla.json:ro
+      - valhalla_tiles:/data/tiles
+      - ./data/osm:/data/osm:ro
+      - ./data/custom_paths:/data/custom_paths:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - runit-net
+    restart: unless-stopped
+
+  # ---------- RUST ROUTING SERVICE ----------
+  routing-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: runit-routing
+    ports:
+      - "50051:50051"
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+      - VALHALLA_URL=http://valhalla:8002
+      - GRPC_PORT=50051
+      - RUNIT__SERVER__GRPC_PORT=50051
+      - RUNIT__VALHALLA__URL=http://valhalla:8002
+    depends_on:
+      valhalla:
+        condition: service_healthy
+    networks:
+      - runit-net
+    restart: unless-stopped
+
+  # ---------- TILE BUILDER (one-shot) ----------
+  tile-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: runit-tile-builder
+    profiles: ["build"]
+    environment:
+      - RUST_LOG=info
+      - VALHALLA_URL=http://valhalla:8002
+    volumes:
+      - valhalla_tiles:/data/tiles
+      - ./data/osm:/data/osm:ro
+      - ./data/custom_paths:/data/custom_paths:ro
+      - ./config/valhalla.json:/config/valhalla.json:ro
+    command: [
+      "runit-maps", "--build-tiles"
+    ]
+    depends_on:
+      valhalla:
+        condition: service_healthy
+    networks:
+      - runit-net
+
+volumes:
+  valhalla_tiles:
+    driver: local
+
+networks:
+  runit-net:
+    driver: bridge
