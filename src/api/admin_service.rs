@@ -1,3 +1,4 @@
+use crate::common::build_state::{BuildJob, BuildState};
 use crate::config::AppConfig;
 use crate::ingestion::regional_config::RegionConfig;
 use crate::ingestion::tile_builder;
@@ -7,19 +8,9 @@ use crate::proto::runit_maps::v1::{
     TileStatusResponse,
 };
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 use tonic::{async_trait, Request, Response, Status};
 use tracing::{error, info};
 use uuid::Uuid;
-
-type BuildState = Arc<Mutex<std::collections::HashMap<String, BuildJob>>>;
-
-struct BuildJob {
-    status: TileBuildStatus,
-    error_message: Option<String>,
-    last_build_time: Option<std::time::SystemTime>,
-    last_build_duration_secs: Option<f32>,
-}
 
 pub struct AdminServiceImpl {
     config: AppConfig,
@@ -27,11 +18,8 @@ pub struct AdminServiceImpl {
 }
 
 impl AdminServiceImpl {
-    pub fn new(config: AppConfig) -> Self {
-        Self {
-            build_state: Arc::new(Mutex::new(std::collections::HashMap::new())),
-            config,
-        }
+    pub fn new(config: AppConfig, build_state: BuildState) -> Self {
+        Self { config, build_state }
     }
 }
 

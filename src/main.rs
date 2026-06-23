@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use runit_maps::api::{admin_service::AdminServiceImpl, routing_service::RoutingServiceImpl};
+use runit_maps::common::build_state;
 use runit_maps::common::telemetry;
 use runit_maps::config;
 use runit_maps::ingestion::regional_config::RegionConfig;
@@ -55,8 +56,9 @@ async fn run_server(cfg: config::AppConfig) -> Result<()> {
     info!("Starting RunIt Maps gRPC server on {}", addr);
 
     let valhalla_client = ValhallaClient::new(cfg.valhalla.url.clone());
-    let routing_svc = RoutingServiceImpl::new(valhalla_client, cfg.clone());
-    let admin_svc = AdminServiceImpl::new(cfg.clone());
+    let state = build_state::new_build_state();
+    let routing_svc = RoutingServiceImpl::new(valhalla_client, cfg.clone(), state.clone());
+    let admin_svc = AdminServiceImpl::new(cfg.clone(), state);
 
     Server::builder()
         .add_service(RoutingServiceServer::new(routing_svc))

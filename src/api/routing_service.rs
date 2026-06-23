@@ -1,3 +1,4 @@
+use crate::common::build_state::BuildState;
 use crate::common::error::ServiceError;
 use crate::config::AppConfig;
 use crate::proto::runit_maps::v1::routing_service_server::RoutingService;
@@ -7,19 +8,22 @@ use crate::proto::runit_maps::v1::{
 use crate::routing::client::ValhallaClient;
 use crate::routing::response_parser::parse_valhalla_response;
 use crate::routing::validator::validate_route_request;
+use std::time::SystemTime;
 use tonic::{async_trait, Request, Response, Status};
 use tracing::info;
 
 pub struct RoutingServiceImpl {
     valhalla_client: ValhallaClient,
     config: AppConfig,
+    build_state: BuildState,
 }
 
 impl RoutingServiceImpl {
-    pub fn new(valhalla_client: ValhallaClient, config: AppConfig) -> Self {
+    pub fn new(valhalla_client: ValhallaClient, config: AppConfig, build_state: BuildState) -> Self {
         Self {
             valhalla_client,
             config,
+            build_state,
         }
     }
 
@@ -138,9 +142,19 @@ impl RoutingService for RoutingServiceImpl {
             .await
             .is_ok();
 
+        // Find the most recent tile build across all regions
+        let state = self.build_state.lock().unwrap();
+        let tiles_last_updated = state
+            .values()
+            .filter_map(|j| j.last_build_time)
+            .max()
+            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
         Ok(Response::new(HealthResponse {
             valhalla_connected,
-            tiles_last_updated: 0,
+            tiles_last_updated,
             service_version: env!("CARGO_PKG_VERSION").to_string(),
             regions: self.config.ingestion.regions.clone(),
         }))
