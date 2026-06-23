@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use runit_maps::api::{admin_service::AdminServiceImpl, routing_service::RoutingServiceImpl};
+use runit_maps::api::{admin_service::AdminServiceImpl, rest_bridge, routing_service::RoutingServiceImpl};
 use runit_maps::common::build_state;
 use runit_maps::common::metrics;
 use runit_maps::common::telemetry;
@@ -61,6 +61,14 @@ async fn run_server(cfg: config::AppConfig) -> Result<()> {
 
     let valhalla_client = ValhallaClient::new(cfg.valhalla.url.clone());
     let state = build_state::new_build_state();
+
+    // Start REST API server in background
+    let rest_addr: SocketAddr = format!("0.0.0.0:{}", cfg.server.rest_port).parse()?;
+    let rest_client = valhalla_client.clone();
+    tokio::spawn(async move {
+        rest_bridge::start_rest_server(rest_addr, rest_client).await;
+    });
+
     let routing_svc = RoutingServiceImpl::new(valhalla_client, cfg.clone(), state.clone());
     let admin_svc = AdminServiceImpl::new(cfg.clone(), state);
 

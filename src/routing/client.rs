@@ -3,6 +3,7 @@ use reqwest::Client as HttpClient;
 use std::time::Duration;
 use tracing::info;
 
+#[derive(Clone)]
 pub struct ValhallaClient {
     client: HttpClient,
     base_url: String,
