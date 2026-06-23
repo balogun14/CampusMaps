@@ -21,13 +21,37 @@ pub struct ValhallaConfig {
     pub max_alternatives: u32,
 }
 
+/// A single campus region defined in config.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RegionDefinition {
+    pub id: String,
+    #[serde(default = "default_osm_region")]
+    pub osm_region: String,
+    #[serde(default)]
+    pub osm_pbf_url: String,
+    #[serde(default)]
+    pub custom_paths_file: String,
+    #[serde(default)]
+    pub tile_dir: String,
+    #[serde(default = "default_true")]
+    pub use_campus_costing: bool,
+}
+
+fn default_osm_region() -> String {
+    "nigeria".to_string()
+}
+
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct IngestionConfig {
     pub download_base_url: String,
     pub tile_dir: String,
     pub osm_data_dir: String,
     pub custom_paths_dir: String,
-    pub regions: Vec<String>,
+    pub regions: Vec<RegionDefinition>,
     pub valhalla_config_path: String,
 }
 
@@ -49,7 +73,15 @@ impl Default for AppConfig {
                 tile_dir: "/data/tiles".to_string(),
                 osm_data_dir: "/data/osm".to_string(),
                 custom_paths_dir: "/data/custom_paths".to_string(),
-                regions: vec!["medilag-campus".to_string()],
+                regions: vec![RegionDefinition {
+                    id: "medilag-campus".to_string(),
+                    osm_region: "nigeria".to_string(),
+                    osm_pbf_url: "https://download.geofabrik.de/africa/nigeria-latest.osm.pbf"
+                        .to_string(),
+                    custom_paths_file: "medilag_campus.geojson".to_string(),
+                    tile_dir: "/data/tiles/medilag-campus".to_string(),
+                    use_campus_costing: true,
+                }],
                 valhalla_config_path: "/config/valhalla.json".to_string(),
             },
         }

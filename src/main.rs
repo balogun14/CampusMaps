@@ -72,7 +72,7 @@ async fn run_server(cfg: config::AppConfig) -> Result<()> {
 async fn build_tiles(cfg: &config::AppConfig, region_id: &str, data_dir: &PathBuf) -> Result<()> {
     info!(region = %region_id, data_dir = %data_dir.display(), "Starting tile build");
 
-    let region = RegionConfig::from_id(region_id, data_dir, &cfg.ingestion.download_base_url)?;
+    let region = RegionConfig::from_id(region_id, &cfg.ingestion);
     let osm_data_dir = Path::new(&cfg.ingestion.osm_data_dir);
     let valhalla_config = Path::new(&cfg.ingestion.valhalla_config_path);
     let report = tile_builder::rebuild_tiles(&region, osm_data_dir, valhalla_config).await?;

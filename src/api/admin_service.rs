@@ -33,7 +33,14 @@ impl AdminService for AdminServiceImpl {
         info!(region_id = %inner.region_id, "Tile reload requested");
 
         // Validate region exists
-        if !self.config.ingestion.regions.contains(&inner.region_id) {
+        let region_ids: Vec<&str> = self
+            .config
+            .ingestion
+            .regions
+            .iter()
+            .map(|r| r.id.as_str())
+            .collect();
+        if !region_ids.contains(&inner.region_id.as_str()) {
             return Err(Status::not_found(format!(
                 "Unknown region: {}",
                 inner.region_id
@@ -69,32 +76,7 @@ impl AdminService for AdminServiceImpl {
                 "Starting background tile build"
             );
 
-            let data_root = Path::new(&config.ingestion.custom_paths_dir)
-                .parent()
-                .map(|p| p.to_path_buf())
-                .unwrap_or_else(|| Path::new("/data").to_path_buf());
-
-            let region = match RegionConfig::from_id(
-                &region_id,
-                &data_root,
-                &config.ingestion.download_base_url,
-            ) {
-                Ok(r) => r,
-                Err(e) => {
-                    error!(region = %region_id, error = %e, "Failed to build region config");
-                    let mut state = build_state.lock().unwrap();
-                    state.insert(
-                        region_id.clone(),
-                        BuildJob {
-                            status: TileBuildStatus::Error,
-                            error_message: Some(e.to_string()),
-                            last_build_time: None,
-                            last_build_duration_secs: None,
-                        },
-                    );
-                    return;
-                }
-            };
+            let region = RegionConfig::from_id(&region_id, &config.ingestion);
 
             let osm_data_dir = Path::new(&config.ingestion.osm_data_dir);
             let valhalla_config = Path::new(&config.ingestion.valhalla_config_path);
@@ -163,7 +145,7 @@ impl AdminService for AdminServiceImpl {
             .regions
             .iter()
             .map(|r| {
-                let job = state.get(r);
+                let job = state.get(&r.id);
                 let (status, last_build_time, last_build_duration_secs, error_message) =
                     match job {
                         Some(j) => (
@@ -179,12 +161,12 @@ impl AdminService for AdminServiceImpl {
                     };
 
                 // If a specific region was requested, only return that one
-                if !inner.region_id.is_empty() && r != &inner.region_id {
+                if !inner.region_id.is_empty() && r.id != inner.region_id {
                     return None;
                 }
 
                 Some(crate::proto::runit_maps::v1::RegionTileStatus {
-                    region_id: r.clone(),
+                    region_id: r.id.clone(),
                     status: status.into(),
                     last_build_time,
                     last_build_duration_secs,

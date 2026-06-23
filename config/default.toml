@@ -13,7 +13,13 @@ tile_dir = "/data/tiles"
 osm_data_dir = "/data/osm"
 custom_paths_dir = "/data/custom_paths"
 valhalla_config_path = "/config/valhalla.json"
-regions = ["medilag-campus"]
+[[ingestion.regions]]
+id = "medilag-campus"
+osm_region = "nigeria"
+osm_pbf_url = "https://download.geofabrik.de/africa/nigeria-latest.osm.pbf"
+custom_paths_file = "medilag_campus.geojson"
+tile_dir = "/data/tiles/medilag-campus"
+use_campus_costing = true
 
 [tracing]
 level = "info"

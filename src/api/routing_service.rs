@@ -156,7 +156,7 @@ impl RoutingService for RoutingServiceImpl {
             valhalla_connected,
             tiles_last_updated,
             service_version: env!("CARGO_PKG_VERSION").to_string(),
-            regions: self.config.ingestion.regions.clone(),
+            regions: self.config.ingestion.regions.iter().map(|r| r.id.clone()).collect(),
         }))
     }
 }
