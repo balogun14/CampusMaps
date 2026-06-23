@@ -60,23 +60,22 @@ pub async fn rebuild_tiles(
     }
 
     // Step 5: Run Valhalla tile builder
-    // valhalla_build_tiles reads tile_dir from its own config (valhalla.json),
-    // so we just pass the merged OSM file. The config must point to the
-    // correct tile output directory for this region.
     info!("Running Valhalla tile builder");
-    let status = Command::new("valhalla_build_tiles")
+    let output = Command::new("valhalla_build_tiles")
         .arg("-c")
         .arg(valhalla_config_path)
         .arg(&merged_osm_path)
-        .status()
+        .output()
         .map_err(|e| {
             ServiceError::TileBuild(format!("Failed to execute valhalla_build_tiles: {}", e))
         })?;
 
-    if !status.success() {
-        return Err(ServiceError::TileBuild(
-            "valhalla_build_tiles exited with non-zero status".into(),
-        ));
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(ServiceError::TileBuild(format!(
+            "valhalla_build_tiles failed: {}",
+            stderr.trim()
+        )));
     }
 
     let duration = start.elapsed().as_secs_f64();
@@ -93,21 +92,23 @@ pub async fn rebuild_tiles(
 
 /// Merges an OSM PBF file with an OSM XML file using the `osmium` tool.
 fn merge_osm_files(pbf_path: &Path, xml_path: &Path, output_path: &Path) -> Result<(), ServiceError> {
-    let status = Command::new("osmium")
+    let output = Command::new("osmium")
         .arg("merge")
         .arg(pbf_path)
         .arg(xml_path)
         .arg("-o")
         .arg(output_path)
-        .status()
+        .output()
         .map_err(|e| {
             ServiceError::TileBuild(format!("Failed to run osmium merge: {}", e))
         })?;
 
-    if !status.success() {
-        return Err(ServiceError::TileBuild(
-            "osmium merge exited with non-zero status".into(),
-        ));
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(ServiceError::TileBuild(format!(
+            "osmium merge failed: {}",
+            stderr.trim()
+        )));
     }
 
     Ok(())
