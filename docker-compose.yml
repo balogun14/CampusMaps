@@ -59,7 +59,7 @@ services:
       - ./data/custom_paths:/data/custom_paths:ro
       - ./config/valhalla.json:/config/valhalla.json:ro
     command: [
-      "runit-maps", "--build-tiles"
+      "runit-maps", "build-tiles", "medilag-campus"
     ]
     depends_on:
       valhalla:

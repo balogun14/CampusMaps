@@ -1,40 +1,100 @@
 # ============================================================
-# Custom Valhalla image with campus_pedestrian costing plugin
+# Build Valhalla from source + compile campus_pedestrian plugin
 # ============================================================
-FROM ghcr.io/valhalla/valhalla:latest AS base
+FROM ubuntu:24.04 AS builder
 
-# ============================================================
-# Stage 1: Build the custom costing plugin
-# ============================================================
-FROM base AS builder
+ENV DEBIAN_FRONTEND=noninteractive
 
-USER root
-
-# Install build dependencies
+# Install Valhalla build + runtime deps
 RUN apt-get update && apt-get install -y \
     cmake \
     build-essential \
-    libsqlite3-dev \
+    ccache \
+    curl \
+    git \
+    libboost-all-dev \
     libcurl4-openssl-dev \
-    libzmq3-dev \
+    libgeos-dev \
+    libluajit-5.1-dev \
+    liblz4-dev \
+    libprotobuf-dev \
+    libprotoc-dev \
     libspatialite-dev \
+    libsqlite3-dev \
+    libsqlite3-mod-spatialite \
+    libtool \
+    libzmq3-dev \
+    pkg-config \
+    protobuf-compiler \
+    python3-all-dev \
+    spatialite-bin \
+    unzip \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy campus costing plugin source
-COPY valhalla/campus_cost /tmp/campus_cost
-
-WORKDIR /tmp/campus_cost/build
-RUN cmake .. && make -j$(nproc) && make install
+# Build Valhalla from source
+ARG VALHALLA_VERSION=3.4.0
+WORKDIR /tmp
+RUN git clone --depth 1 --branch ${VALHALLA_VERSION} https://github.com/valhalla/valhalla.git
+WORKDIR /tmp/valhalla/build
+RUN cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DENABLE_CCACHE=OFF \
+    -DENABLE_DATA_INSTALL=ON \
+    -DENABLE_PYTHON_BINDINGS=OFF \
+    -DENABLE_SERVICES=ON \
+    -DENABLE_HTTP=ON \
+    -DENABLE_TOOLS=ON \
+    -DBUILD_TESTING=OFF \
+    -DBUILD_SHARED_LIBS=ON
+RUN make -j$(nproc)
+RUN make install
 
 # ============================================================
-# Final image
+# Build the custom campus_pedestrian plugin
 # ============================================================
-FROM base
+WORKDIR /tmp/campus_cost
+COPY valhalla/campus_cost .
 
-# Copy the custom costing shared library
-COPY --from=builder /usr/local/lib/libcampus_pedestrian.* /usr/local/lib/
+RUN mkdir -p build && cd build && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH=/usr/local \
+    && make -j$(nproc) && make install
 
-# Ensure the library is loadable
+# ============================================================
+# Minimal runtime image
+# ============================================================
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    libboost-filesystem1.83.0 \
+    libboost-locale1.83.0 \
+    libboost-program-options1.83.0 \
+    libboost-system1.83.0 \
+    libcurl4t64 \
+    libgeos-c1t64 \
+    libluajit-5.1-2 \
+    liblz4-1 \
+    libprotobuf-lite32t64 \
+    libspatialite8t64 \
+    libsqlite3-0 \
+    libzmq5 \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Valhalla binaries + libs
+COPY --from=builder /usr/local/bin/valhalla* /usr/local/bin/
+COPY --from=builder /usr/local/lib/libvalhalla* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libcampus_pedestrian* /usr/local/lib/
+
+# Valhalla data install (config, lua scripts, etc.)
+COPY --from=builder /usr/local/share/valhalla /usr/local/share/valhalla
+
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
