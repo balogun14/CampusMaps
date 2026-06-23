@@ -1,0 +1,11 @@
+# Flutter generated
+.idea/
+*.iml
+build/
+.pub/
+.packages
+.pub-cache/
+.vscode/
+*.lock
+.DS_Store
+*.iml
