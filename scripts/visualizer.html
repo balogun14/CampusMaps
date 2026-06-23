@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RunIt Maps — Campus Route Visualizer</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; display: flex; height: 100vh; }
+#map { flex: 1; height: 100%; }
+#sidebar { width: 380px; overflow-y: auto; padding: 16px; border-left: 1px solid #ccc; background: #fafafa; }
+h2 { font-size: 16px; margin-bottom: 8px; }
+label { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; }
+select, button { width: 100%; padding: 8px 12px; margin-top: 4px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+button { background: #1a73e8; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+button:hover { background: #1557b0; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.coord-info { font-size: 12px; color: #555; margin-top: 4px; word-break: break-all; }
+#steps { margin-top: 12px; }
+.step { padding: 10px; margin-bottom: 6px; border-radius: 6px; background: #fff; border: 1px solid #e0e0e0; font-size: 13px; }
+.step .step-header { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+.step .step-header .num { color: #1a73e8; }
+.step .step-header .dist { color: #666; }
+.step .street { color: #333; }
+.step .dir { color: #777; font-size: 12px; }
+.step.custom-path { border-left: 4px solid #e8711a; background: #fff8f0; }
+#summary { margin: 12px 0; padding: 10px; border-radius: 6px; background: #e8f5e9; font-size: 13px; }
+#error { margin-top: 8px; padding: 8px; border-radius: 6px; background: #ffebee; color: #c62828; font-size: 13px; display: none; }
+.legend { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-color { width: 16px; height: 4px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="sidebar">
+  <h2>Route Visualizer</h2>
+
+  <label>Costing Mode</label>
+  <select id="costing">
+    <option value="pedestrian">Pedestrian</option>
+    <option value="campus_pedestrian" selected>Campus Pedestrian</option>
+    <option value="auto">Auto</option>
+    <option value="bicycle">Bicycle</option>
+  </select>
+
+  <label>
+    <input type="checkbox" id="avoidStairs" checked />
+    Avoid Stairs
+  </label>
+
+  <label>Walking Speed (km/h)</label>
+  <select id="walkingSpeed">
+    <option value="3">Slow (3 km/h)</option>
+    <option value="5" selected>Moderate (5 km/h)</option>
+    <option value="7">Fast (7 km/h)</option>
+  </select>
+
+  <div id="originInfo" class="coord-info">Origin: click map to set</div>
+  <div id="destInfo" class="coord-info">Destination: click map to set</div>
+
+  <button id="routeBtn" disabled>Get Route</button>
+
+  <div id="error"></div>
+  <div id="summary"></div>
+  <div id="steps"></div>
+</div>
+
+<script>
+const map = L.map('map').setView([6.515, 3.350], 16);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+const originMarker = L.marker([6.5135, 3.3515], {
+  draggable: true,
+  icon: L.divIcon({ className: 'custom-marker', html: '<div style="background:#1a73e8;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">A</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
+});
+const destMarker = L.marker([6.5165, 3.3490], {
+  draggable: true,
+  icon: L.divIcon({ className: 'custom-marker', html: '<div style="background:#c62828;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">B</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
+});
+let originSet = false, destSet = false;
+let routeLine = null, customRouteLine = null;
+
+function updateCoordInfo() {
+  const origin = originMarker.getLatLng();
+  const dest = destMarker.getLatLng();
+  document.getElementById('originInfo').textContent = `Origin: ${origin.lat.toFixed(5)}, ${origin.lng.toFixed(5)}`;
+  document.getElementById('destInfo').textContent = `Destination: ${dest.lat.toFixed(5)}, ${dest.lng.toFixed(5)}`;
+  originSet = destSet = true;
+  document.getElementById('routeBtn').disabled = false;
+}
+
+originMarker.on('dragend', updateCoordInfo);
+destMarker.on('dragend', updateCoordInfo);
+
+map.on('click', function(e) {
+  if (!originSet) {
+    originMarker.setLatLng(e.latlng);
+    originMarker.addTo(map);
+    originSet = true;
+  } else if (!destSet) {
+    destMarker.setLatLng(e.latlng);
+    destMarker.addTo(map);
+    destSet = true;
+  } else {
+    originMarker.setLatLng(e.latlng);
+    destSet = false;
+    destMarker.removeFrom(map);
+  }
+  updateCoordInfo();
+});
+
+updateCoordInfo();
+
+document.getElementById('routeBtn').addEventListener('click', async function() {
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Routing...';
+
+  document.getElementById('summary').innerHTML = '';
+  document.getElementById('steps').innerHTML = '';
+  document.getElementById('error').style.display = 'none';
+  if (routeLine) map.removeLayer(routeLine);
+  if (customRouteLine) map.removeLayer(customRouteLine);
+
+  const origin = originMarker.getLatLng();
+  const dest = destMarker.getLatLng();
+
+  const body = {
+    origin: { lat: origin.lat, lng: origin.lng },
+    destination: { lat: dest.lat, lng: dest.lng },
+    costing: document.getElementById('costing').value,
+    avoidStairs: document.getElementById('avoidStairs').checked,
+    walkingSpeedKmh: parseFloat(document.getElementById('walkingSpeed').value),
+  };
+
+  try {
+    const res = await fetch('/v1/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById('error').textContent = data.error || 'Routing failed';
+      document.getElementById('error').style.display = 'block';
+      return;
+    }
+
+    // Decode polyline
+    const decoded = decodePolyline(data.encodedPolyline);
+    const latlngs = decoded.map(p => [p.lat, p.lng]);
+    const polylineKwargs = { color: '#1a73e8', weight: 4, opacity: 0.8 };
+    routeLine = L.polyline(latlngs, polylineKwargs).addTo(map);
+    map.fitBounds(routeLine.getBounds().pad(0.1));
+
+    // Show summary
+    const s = data.summary;
+    document.getElementById('summary').innerHTML = `
+      <strong>Distance:</strong> ${s.distanceKm.toFixed(2)} km &middot;
+      <strong>Duration:</strong> ${s.durationFormatted}
+    `;
+
+    // Show steps
+    const stepsHtml = data.steps.map(step => {
+      const isCustom = step.isCustomPath;
+      const dirIcon = { north: '↑', south: '↓', east: '→', west: '←', straight: '↑', northeast: '↗', northwest: '↖', southeast: '↘', southwest: '↙' }[step.direction] || '';
+      return `<div class="step${isCustom ? ' custom-path' : ''}">
+        <div class="step-header">
+          <span class="num">#${step.stepNumber}</span>
+          <span class="dist">${step.distanceMeters.toFixed(0)} m</span>
+        </div>
+        <div class="street">${dirIcon} ${step.instruction}</div>
+        <div class="dir">${step.streetName}${isCustom ? ' &middot; <strong>Campus Path</strong>' : ''}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('steps').innerHTML = stepsHtml;
+
+  } catch (err) {
+    document.getElementById('error').textContent = 'Network error: ' + err.message;
+    document.getElementById('error').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get Route';
+  }
+});
+
+function decodePolyline(encoded) {
+  const len = encoded.length;
+  let index = 0, lat = 0, lng = 0, points = [];
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+    shift = 0; result = 0;
+    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
+</script>
+</body>
+</html>
