@@ -118,10 +118,122 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    /// Validates the full GeoJSON → OSM XML conversion pipeline
+    /// without external dependencies (osmium, Valhalla).
+    #[test]
+    fn test_ingestion_pipeline_smoke() {
+        let dir = std::env::temp_dir().join("runit-smoke-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // Create sample GeoJSON
+        let geojson = r#"{
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {
+                    "name": "Test Path",
+                    "campus_id": "medilag",
+                    "surface": "paved",
+                    "lit": "yes",
+                    "wheelchair": "yes"
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[3.3515, 6.5135], [3.3510, 6.5145], [3.3490, 6.5165]]
+                }
+            }, {
+                "type": "Feature",
+                "properties": {
+                    "name": "Stairway",
+                    "campus_id": "medilag",
+                    "highway": "steps",
+                    "wheelchair": "no"
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[3.3492, 6.5160], [3.3495, 6.5155]]
+                }
+            }]
+        }"#;
+
+        let geojson_path = dir.join("test_paths.geojson");
+        std::fs::write(&geojson_path, geojson).unwrap();
+
+        // Parse GeoJSON
+        let collection = crate::ingestion::geojson::parse_geojson(&geojson_path).unwrap();
+        assert_eq!(collection.features.len(), 2);
+
+        // Convert to OSM XML
+        let xml = crate::ingestion::geojson::collection_to_osm_xml(&collection);
+
+        // Validate XML structure
+        assert!(xml.starts_with(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
+        assert!(xml.contains("<osm"));
+        assert!(xml.contains("</osm>"));
+        assert!(xml.contains("<node id=\"2000000000\""));
+        assert!(xml.contains("<node id=\"2000000001\""));
+        assert!(xml.contains("<way id=\"1000000000\""));
+        assert!(xml.contains("<way id=\"1000000001\""));
+
+        // Validate tags
+        assert!(xml.contains("<tag k=\"campus_id\" v=\"medilag\"/>"));
+        assert!(xml.contains("<tag k=\"highway\" v=\"path\"/>"));
+        assert!(xml.contains("<tag k=\"highway\" v=\"steps\"/>"));
+        assert!(xml.contains("<tag k=\"foot\" v=\"designated\"/>"));
+        assert!(xml.contains("<tag k=\"wheelchair\" v=\"no\"/>"));
+
+        // Write to OSM XML file and verify it's valid
+        let osm_path = dir.join("test_output.osm");
+        std::fs::write(&osm_path, &xml).unwrap();
+        let written = std::fs::read_to_string(&osm_path).unwrap();
+        assert_eq!(written, xml);
+
+        // Cleanup
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Tests that the pipeline correctly handles a GeoJSON with no custom
+    /// properties (falls back to defaults: highway=path, foot=designated).
+    #[test]
+    fn test_minimal_geojson_feature() {
+        let geojson = r#"{
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {
+                    "name": "Minimal",
+                    "campus_id": "medilag"
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[3.35, 6.51], [3.36, 6.52]]
+                }
+            }]
+        }"#;
+
+        let dir = std::env::temp_dir().join("runit-minimal-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let path = dir.join("minimal.geojson");
+        std::fs::write(&path, geojson).unwrap();
+
+        let collection = crate::ingestion::geojson::parse_geojson(&path).unwrap();
+        let xml = crate::ingestion::geojson::collection_to_osm_xml(&collection);
+
+        // Default tags should be applied
+        assert!(xml.contains("<tag k=\"highway\" v=\"path\"/>"));
+        assert!(xml.contains("<tag k=\"foot\" v=\"designated\"/>"));
+        assert!(xml.contains("<tag k=\"name\" v=\"Minimal\"/>"));
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Integration test that requires osmium and Valhalla.
+    /// Run with: RUNIT_INTEGRATION_TEST=1 cargo test
     #[tokio::test]
     async fn test_rebuild_tiles_no_custom_paths() {
-        // This test requires Valhalla and OSM files to be present, so it's a no-op
-        // unless the environment variable RUNIT_INTEGRATION_TEST is set.
         if std::env::var("RUNIT_INTEGRATION_TEST").is_err() {
             return;
         }
@@ -129,7 +241,7 @@ mod tests {
         let region = RegionConfig {
             id: "test".to_string(),
             osm_region: "test".to_string(),
-            osm_pbf_url: "https://download.geofabrik.de/north-america/us/massachusetts-latest.osm.pbf"
+            osm_pbf_url: "https://download.geofabrik.de/africa/nigeria-latest.osm.pbf"
                 .to_string(),
             custom_paths_file: PathBuf::from("/nonexistent.geojson"),
             tile_dir: PathBuf::from("/tmp/runit-test-tiles"),
