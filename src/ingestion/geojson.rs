@@ -1,5 +1,6 @@
 use crate::common::error::ServiceError;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::Path;
 
 /// Represents a GeoJSON Feature with LineString geometry.
@@ -124,6 +125,30 @@ pub fn collection_to_osm_xml(collection: &GeoJsonFeatureCollection) -> String {
 
     xml.push_str("</osm>\n");
     xml
+}
+
+/// Loads all campus path names from all GeoJSON files in the given directory.
+/// Returns a set of path names for use in detecting custom paths in route responses.
+pub fn load_campus_path_names(custom_paths_dir: &Path) -> HashSet<String> {
+    let mut names = HashSet::new();
+    let dir = match std::fs::read_dir(custom_paths_dir) {
+        Ok(d) => d,
+        Err(_) => return names,
+    };
+    for entry in dir.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("geojson") {
+            continue;
+        }
+        if let Ok(collection) = parse_geojson(&path) {
+            for feature in &collection.features {
+                if let Some(name) = feature.properties.get("name").and_then(|v| v.as_str()) {
+                    names.insert(name.to_string());
+                }
+            }
+        }
+    }
+    names
 }
 
 #[cfg(test)]

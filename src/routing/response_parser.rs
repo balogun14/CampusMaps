@@ -3,6 +3,7 @@ use crate::common::polyline;
 use crate::proto::runit_maps::v1::{
     LatLng, ManeuverType, RouteRequest, RouteResponse, RouteStep, RouteSummary,
 };
+use std::collections::HashSet;
 
 /// Maps Valhalla maneuver type integers to our proto enum.
 fn maneuver_type_from_valhalla(valhalla_type: i32) -> ManeuverType {
@@ -22,6 +23,7 @@ fn maneuver_type_from_valhalla(valhalla_type: i32) -> ManeuverType {
 pub fn parse_valhalla_response(
     raw: &serde_json::Value,
     _req: &RouteRequest,
+    campus_path_names: &HashSet<String>,
 ) -> Result<RouteResponse, ServiceError> {
     let trip = raw
         .get("trip")
@@ -122,6 +124,8 @@ pub fn parse_valhalla_response(
                 .unwrap_or("straight")
                 .to_string();
 
+            let is_custom_path = campus_path_names.contains(&street_name);
+
             RouteStep {
                 step_number: i as i32 + 1,
                 instruction,
@@ -135,7 +139,7 @@ pub fn parse_valhalla_response(
                 duration_seconds: step_time as f32,
                 maneuver_type: maneuver_type.into(),
                 direction,
-                is_custom_path: false, // TODO: detect from campus edge tags
+                is_custom_path,
             }
         })
         .collect();
@@ -211,7 +215,8 @@ mod tests {
     fn test_parse_valhalla_response() {
         let raw = sample_valhalla_response();
         let req = RouteRequest::default();
-        let result = parse_valhalla_response(&raw, &req);
+        let campus_names = HashSet::new();
+        let result = parse_valhalla_response(&raw, &req, &campus_names);
 
         assert!(result.is_ok());
         let response = result.unwrap();

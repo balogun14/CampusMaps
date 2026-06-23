@@ -5,6 +5,7 @@ use runit_maps::common::build_state;
 use runit_maps::common::metrics;
 use runit_maps::common::telemetry;
 use runit_maps::config;
+use runit_maps::ingestion::geojson;
 use runit_maps::ingestion::regional_config::RegionConfig;
 use runit_maps::ingestion::tile_builder;
 use runit_maps::proto::runit_maps::v1::{
@@ -62,14 +63,22 @@ async fn run_server(cfg: config::AppConfig) -> Result<()> {
     let valhalla_client = ValhallaClient::new(cfg.valhalla.url.clone());
     let state = build_state::new_build_state();
 
+    // Load campus path names for custom path detection
+    let campus_path_names = geojson::load_campus_path_names(
+        std::path::Path::new(&cfg.ingestion.custom_paths_dir),
+    );
+    let campus_names_count = campus_path_names.len();
+    info!(count = campus_names_count, "Loaded campus path names");
+
     // Start REST API server in background
     let rest_addr: SocketAddr = format!("0.0.0.0:{}", cfg.server.rest_port).parse()?;
     let rest_client = valhalla_client.clone();
+    let rest_campus_names = campus_path_names.clone();
     tokio::spawn(async move {
-        rest_bridge::start_rest_server(rest_addr, rest_client).await;
+        rest_bridge::start_rest_server(rest_addr, rest_client, rest_campus_names).await;
     });
 
-    let routing_svc = RoutingServiceImpl::new(valhalla_client, cfg.clone(), state.clone());
+    let routing_svc = RoutingServiceImpl::new(valhalla_client, cfg.clone(), state.clone(), campus_path_names);
     let admin_svc = AdminServiceImpl::new(cfg.clone(), state);
 
     Server::builder()

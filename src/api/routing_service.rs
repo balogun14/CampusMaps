@@ -8,6 +8,7 @@ use crate::proto::runit_maps::v1::{
 use crate::routing::client::ValhallaClient;
 use crate::routing::response_parser::parse_valhalla_response;
 use crate::routing::validator::validate_route_request;
+use std::collections::HashSet;
 use std::time::SystemTime;
 use tonic::{async_trait, Request, Response, Status};
 use tracing::info;
@@ -16,14 +17,21 @@ pub struct RoutingServiceImpl {
     valhalla_client: ValhallaClient,
     config: AppConfig,
     build_state: BuildState,
+    campus_path_names: HashSet<String>,
 }
 
 impl RoutingServiceImpl {
-    pub fn new(valhalla_client: ValhallaClient, config: AppConfig, build_state: BuildState) -> Self {
+    pub fn new(
+        valhalla_client: ValhallaClient,
+        config: AppConfig,
+        build_state: BuildState,
+        campus_path_names: HashSet<String>,
+    ) -> Self {
         Self {
             valhalla_client,
             config,
             build_state,
+            campus_path_names,
         }
     }
 
@@ -147,7 +155,7 @@ impl RoutingService for RoutingServiceImpl {
         };
 
         // Parse Valhalla response into our proto
-        let response = parse_valhalla_response(&raw_response, &inner)
+        let response = parse_valhalla_response(&raw_response, &inner, &self.campus_path_names)
             .map_err(|e| {
                 crate::common::metrics::record_error("response_parse");
                 Status::internal(e.to_string())

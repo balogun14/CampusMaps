@@ -9,6 +9,7 @@ use axum::{
     Json, Router,
 };
 use serde::Deserialize;
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
@@ -44,6 +45,7 @@ fn default_walking_speed() -> f64 {
 #[derive(Clone)]
 pub struct RestState {
     pub valhalla_client: ValhallaClient,
+    pub campus_path_names: HashSet<String>,
 }
 
 pub fn build_router(state: RestState) -> Router {
@@ -135,7 +137,7 @@ async fn handle_route(
     };
 
     // Parse into proto response
-    let proto_resp = match parse_valhalla_response(&raw, &proto_req) {
+    let proto_resp = match parse_valhalla_response(&raw, &proto_req, &state.campus_path_names) {
         Ok(r) => r,
         Err(e) => {
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
@@ -172,10 +174,11 @@ async fn handle_route(
 pub async fn start_rest_server(
     addr: SocketAddr,
     valhalla_client: ValhallaClient,
+    campus_path_names: HashSet<String>,
 ) {
     info!(addr = %addr, "Starting REST API server");
 
-    let state = RestState { valhalla_client };
+    let state = RestState { valhalla_client, campus_path_names };
     let app = build_router(state);
 
     let listener = tokio::net::TcpListener::bind(addr)
