@@ -4,7 +4,7 @@ use crate::ingestion::osm;
 use crate::ingestion::regional_config::RegionConfig;
 use std::path::Path;
 use std::process::Command;
-use tracing::{error, info};
+use tracing::info;
 
 /// Result of a tile build operation.
 pub struct BuildReport {
@@ -16,30 +16,40 @@ pub struct BuildReport {
 }
 
 /// Orchestrates the full tile build pipeline for a single region.
-pub async fn rebuild_tiles(region: &RegionConfig) -> Result<BuildReport, ServiceError> {
+///
+/// # Arguments
+/// * `region` - Region configuration (tile_dir, custom_paths_file, etc.)
+/// * `osm_data_dir` - Directory where downloaded OSM PBF files are cached
+/// * `valhalla_config_path` - Path to Valhalla's config JSON (controls tile output dir)
+pub async fn rebuild_tiles(
+    region: &RegionConfig,
+    osm_data_dir: &Path,
+    valhalla_config_path: &Path,
+) -> Result<BuildReport, ServiceError> {
     let start = std::time::Instant::now();
     let region_id = region.id.clone();
     info!(region = %region_id, "Starting tile rebuild");
 
-    // Step 1: Ensure tile directory exists
-    let tile_dir = &region.tile_dir;
-    std::fs::create_dir_all(tile_dir)?;
+    // Step 1: Ensure directories exist
+    std::fs::create_dir_all(&region.tile_dir)?;
+    std::fs::create_dir_all(osm_data_dir)?;
 
-    // Step 2: Download OSM PBF
-    let osm_path = tile_dir.parent().unwrap_or(Path::new("/data/osm"))
-        .join(format!("{}.osm.pbf", region.osm_region));
-    
+    // Step 2: Download OSM PBF to the shared osm_data_dir
+    let osm_path = osm_data_dir.join(format!("{}.osm.pbf", region.osm_region));
     osm::download_osm_pbf(&region.osm_pbf_url, &osm_path).await?;
 
     // Step 3: Convert GeoJSON to OSM XML (if custom paths exist)
-    let merged_osm_path = tile_dir.join("merged.osm.pbf");
+    let merged_osm_path = region.tile_dir.join("merged.osm.pbf");
     if region.custom_paths_file.exists() {
-        info!("Found custom paths at {:?}, converting to OSM XML", region.custom_paths_file);
-        
+        info!(
+            "Found custom paths at {:?}, converting to OSM XML",
+            region.custom_paths_file
+        );
+
         let collection = geojson::parse_geojson(&region.custom_paths_file)?;
         let osm_xml = geojson::collection_to_osm_xml(&collection);
-        
-        let custom_osm_path = tile_dir.join("custom_paths.osm");
+
+        let custom_osm_path = region.tile_dir.join("custom_paths.osm");
         tokio::fs::write(&custom_osm_path, &osm_xml).await?;
 
         // Step 4: Merge OSM PBF + custom OSM XML using osmium
@@ -50,10 +60,13 @@ pub async fn rebuild_tiles(region: &RegionConfig) -> Result<BuildReport, Service
     }
 
     // Step 5: Run Valhalla tile builder
+    // valhalla_build_tiles reads tile_dir from its own config (valhalla.json),
+    // so we just pass the merged OSM file. The config must point to the
+    // correct tile output directory for this region.
     info!("Running Valhalla tile builder");
     let status = Command::new("valhalla_build_tiles")
         .arg("-c")
-        .arg("/config/valhalla.json")
+        .arg(valhalla_config_path)
         .arg(&merged_osm_path)
         .status()
         .map_err(|e| {
@@ -71,7 +84,7 @@ pub async fn rebuild_tiles(region: &RegionConfig) -> Result<BuildReport, Service
 
     Ok(BuildReport {
         region_id,
-        tile_count: 0,  // TODO: count actual tiles
+        tile_count: 0, // TODO: count actual tiles
         edge_count: 0,
         duration_secs: duration,
         success: true,
@@ -123,7 +136,12 @@ mod tests {
             use_campus_costing: true,
         };
 
-        let result = rebuild_tiles(&region).await;
+        let result = rebuild_tiles(
+            &region,
+            Path::new("/tmp/runit-test-osm"),
+            Path::new("/config/valhalla.json"),
+        )
+        .await;
         // Should fail because we don't have the real setup, but shouldn't panic
         assert!(result.is_err());
     }

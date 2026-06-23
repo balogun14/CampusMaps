@@ -12,7 +12,8 @@ download_base_url = "https://download.geofabrik.de/north-america/us"
 tile_dir = "/data/tiles"
 osm_data_dir = "/data/osm"
 custom_paths_dir = "/data/custom_paths"
-regions = ["mit-campus"]
+valhalla_config_path = "/config/valhalla.json"
+regions = ["medilag-campus"]
 
 [tracing]
 level = "info"

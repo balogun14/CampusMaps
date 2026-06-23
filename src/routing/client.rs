@@ -36,11 +36,12 @@ impl ValhallaClient {
             .send()
             .await?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
             return Err(ServiceError::Valhalla(format!(
                 "Valhalla returned {}: {}",
-                response.status(),
+                status,
                 body
             )));
         }

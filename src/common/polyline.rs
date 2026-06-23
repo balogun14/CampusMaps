@@ -1,18 +1,27 @@
 use crate::proto::runit_maps::v1::LatLng;
+use geo_types::Coord;
 
-/// Encodes a slice of (lat, lng) pairs into a Google-encoded polyline string.
+/// Encodes a slice of LatLng into a Google-encoded polyline string.
 pub fn encode_points(points: &[LatLng]) -> String {
-    let coords: Vec<(f64, f64)> = points.iter().map(|p| (p.lat, p.lng)).collect();
-    polyline::encode_coordinates(&coords, 5).unwrap_or_default()
+    let coords: Vec<Coord<f64>> = points
+        .iter()
+        .map(|p| Coord { x: p.lng, y: p.lat })
+        .collect();
+    polyline::encode_coordinates(coords, 5).unwrap_or_default()
 }
 
 /// Decodes a Google-encoded polyline string into a vector of LatLng.
 pub fn decode_points(encoded: &str) -> Vec<LatLng> {
-    polyline::decode_coordinates(encoded, 5)
+    polyline::decode_polyline(encoded, 5)
+        .map(|ls| {
+            ls.into_iter()
+                .map(|coord| LatLng {
+                    lat: coord.y,
+                    lng: coord.x,
+                })
+                .collect()
+        })
         .unwrap_or_default()
-        .into_iter()
-        .map(|(lat, lng)| LatLng { lat, lng })
-        .collect()
 }
 
 #[cfg(test)]

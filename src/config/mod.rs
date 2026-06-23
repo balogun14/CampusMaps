@@ -28,6 +28,7 @@ pub struct IngestionConfig {
     pub osm_data_dir: String,
     pub custom_paths_dir: String,
     pub regions: Vec<String>,
+    pub valhalla_config_path: String,
 }
 
 impl Default for AppConfig {
@@ -43,12 +44,13 @@ impl Default for AppConfig {
                 max_alternatives: 3,
             },
             ingestion: IngestionConfig {
-                download_base_url: "https://download.geofabrik.de/north-america/us"
+                download_base_url: "https://download.geofabrik.de/africa"
                     .to_string(),
                 tile_dir: "/data/tiles".to_string(),
                 osm_data_dir: "/data/osm".to_string(),
                 custom_paths_dir: "/data/custom_paths".to_string(),
-                regions: vec!["mit-campus".to_string()],
+                regions: vec!["medilag-campus".to_string()],
+                valhalla_config_path: "/config/valhalla.json".to_string(),
             },
         }
     }
@@ -61,7 +63,7 @@ impl AppConfig {
             .set_default("valhalla.url", "http://localhost:8002")?
             .set_default("valhalla.timeout_seconds", "10")?
             .set_default("valhalla.max_alternatives", "3")?
-            .set_default("ingestion.download_base_url", "https://download.geofabrik.de/north-america/us")?
+            .set_default("ingestion.download_base_url", "https://download.geofabrik.de/africa")?
             .add_source(config::File::with_name("config/default").required(false))
             .add_source(
                 config::Environment::with_prefix("RUNIT")

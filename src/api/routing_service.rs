@@ -69,20 +69,28 @@ impl RoutingServiceImpl {
             crate::proto::runit_maps::v1::Units::Imperial => "miles",
             _ => "kilometers",
         };
+Ok(serde_json::json!({
+     "locations": locations,
+     "costing": costing,
+     "costing_options": costing_options,
 
-        Ok(serde_json::json!({
-            "locations": locations,
-            "costing": costing,
-            "costing_options": costing_options,
-            "directions_options": {
-                "units": units,
-                "language": "en-US"
-            },
-            "id": format!("runit-{}", std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis())
-                .unwrap_or(0))
-        }))
+     "directions_options": {
+         "units": units,
+         "language": "en-US"
+     },
+     "campus_id": req.campus_id,
+     "include_steps": req.include_steps,
+     "waypoints": req.waypoints.iter().map(|latlng| {
+         serde_json::json!({
+             "lat": latlng.lat,
+             "lng": latlng.lng
+         })
+     }).collect::<Vec<_>>(),
+     "id": format!("runit-{}", std::time::SystemTime::now()
+         .duration_since(std::time::UNIX_EPOCH)
+         .map(|d| d.as_millis())
+         .unwrap_or(0))
+ }))
     }
 }
 

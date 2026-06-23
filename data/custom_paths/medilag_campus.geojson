@@ -1,0 +1,236 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Main Gate to LUTH Hospital",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes",
+        "description": "Main entrance into LUTH campus"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3515, 6.5135],
+          [3.3512, 6.5140],
+          [3.3510, 6.5145]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Hospital to College of Medicine",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes",
+        "description": "Main clinical-to-preclinical walkway"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3510, 6.5145],
+          [3.3502, 6.5150],
+          [3.3498, 6.5155],
+          [3.3492, 6.5160],
+          [3.3490, 6.5165]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "College of Medicine to Basic Medical Sciences",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes",
+        "description": "Connects main admin to preclinical buildings"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3490, 6.5165],
+          [3.3485, 6.5165],
+          [3.3480, 6.5165]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Anatomy to Physiology Walkway",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes",
+        "description": "Walkway between preclinical departments"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3482, 6.5162],
+          [3.3485, 6.5165],
+          [3.3488, 6.5168],
+          [3.3492, 6.5168]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Library to Hostel Route",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes",
+        "description": "Main student route from library to hostels"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3498, 6.5168],
+          [3.3495, 6.5172],
+          [3.3490, 6.5175],
+          [3.3488, 6.5178]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Dental School Link",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3495, 6.5155],
+          [3.3498, 6.5155],
+          [3.3500, 6.5152]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Biochemistry to Hostels",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3485, 6.5172],
+          [3.3488, 6.5175],
+          [3.3488, 6.5178]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Emergency to Paediatrics Walkway",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3505, 6.5145],
+          [3.3507, 6.5148],
+          [3.3508, 6.5150]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Pathology to Medical Library",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3502, 6.5158],
+          [3.3500, 6.5162],
+          [3.3498, 6.5165],
+          [3.3498, 6.5168]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Staff Quarters Shortcut",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes",
+        "description": "Path from staff quarters to college buildings"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3480, 6.5180],
+          [3.3480, 6.5175],
+          [3.3480, 6.5170],
+          [3.3480, 6.5165]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Nursing School to Hospital",
+        "campus_id": "medilag",
+        "surface": "paved",
+        "lit": "yes",
+        "wheelchair": "yes"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3498, 6.5142],
+          [3.3502, 6.5142],
+          [3.3506, 6.5143],
+          [3.3510, 6.5145]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Lecture Theatre Steps",
+        "campus_id": "medilag",
+        "highway": "steps",
+        "surface": "concrete",
+        "lit": "yes",
+        "wheelchair": "no",
+        "description": "Stairs connecting the main lecture theatre to the lower campus"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [3.3492, 6.5160],
+          [3.3492, 6.5158],
+          [3.3495, 6.5155]
+        ]
+      }
+    }
+  ]
+}

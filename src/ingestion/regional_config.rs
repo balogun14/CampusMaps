@@ -1,3 +1,4 @@
+use crate::common::error::ServiceError;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -19,29 +20,39 @@ pub struct RegionConfig {
 }
 
 impl RegionConfig {
-    /// Creates a default config for the MIT campus area.
-    pub fn mit_campus(data_root: &PathBuf) -> Self {
+    /// Creates a default config for the Medilag (LUTH) campus area.
+    pub fn medilag_campus(data_root: &PathBuf) -> Self {
         Self {
-            id: "mit-campus".to_string(),
-            osm_region: "massachusetts".to_string(),
-            osm_pbf_url: "https://download.geofabrik.de/north-america/us/massachusetts-latest.osm.pbf"
+            id: "medilag-campus".to_string(),
+            osm_region: "nigeria".to_string(),
+            osm_pbf_url: "https://download.geofabrik.de/africa/nigeria-latest.osm.pbf"
                 .to_string(),
-            custom_paths_file: data_root.join("custom_paths/mit_campus.geojson"),
-            tile_dir: data_root.join("tiles/mit-campus"),
+            custom_paths_file: data_root.join("custom_paths/medilag_campus.geojson"),
+            tile_dir: data_root.join("tiles/medilag-campus"),
             use_campus_costing: true,
         }
     }
 
-    /// Creates a default config for the Harvard campus area.
-    pub fn harvard_campus(data_root: &PathBuf) -> Self {
-        Self {
-            id: "harvard-campus".to_string(),
-            osm_region: "massachusetts".to_string(),
-            osm_pbf_url: "https://download.geofabrik.de/north-america/us/massachusetts-latest.osm.pbf"
-                .to_string(),
-            custom_paths_file: data_root.join("custom_paths/harvard_campus.geojson"),
-            tile_dir: data_root.join("tiles/harvard-campus"),
-            use_campus_costing: true,
+    /// Build a RegionConfig from a raw region ID string and data directory.
+    /// Supports known short names ("mit-campus", "harvard-campus") and fully-qualified IDs.
+    pub fn from_id(
+        id: &str,
+        data_dir: &PathBuf,
+        download_base_url: &str,
+    ) -> Result<Self, ServiceError> {
+        match id {
+            "medilag-campus" => Ok(Self::medilag_campus(data_dir)),
+            _ => {
+                let osm_region = id.split('/').next_back().unwrap_or(id);
+                Ok(Self {
+                    id: id.to_string(),
+                    osm_region: osm_region.to_string(),
+                    osm_pbf_url: format!("{}/{}-latest.osm.pbf", download_base_url, osm_region),
+                    custom_paths_file: data_dir.join(format!("custom_paths/{}.geojson", id)),
+                    tile_dir: data_dir.join(format!("tiles/{}", id)),
+                    use_campus_costing: true,
+                })
+            }
         }
     }
 
@@ -60,8 +71,7 @@ impl RegionConfig {
             .map(|id| {
                 // Try to match known regions, or create a generic one
                 match id.as_str() {
-                    "mit-campus" => Self::mit_campus(&data_root),
-                    "harvard-campus" => Self::harvard_campus(&data_root),
+                    "medilag-campus" => Self::medilag_campus(&data_root),
                     _ => Self {
                         id: id.clone(),
                         osm_region: id.clone(),
