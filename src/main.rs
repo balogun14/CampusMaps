@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use runit_maps::api::{admin_service::AdminServiceImpl, routing_service::RoutingServiceImpl};
 use runit_maps::common::build_state;
+use runit_maps::common::metrics;
 use runit_maps::common::telemetry;
 use runit_maps::config;
 use runit_maps::ingestion::regional_config::RegionConfig;
@@ -54,6 +55,9 @@ async fn main() -> Result<()> {
 async fn run_server(cfg: config::AppConfig) -> Result<()> {
     let addr: SocketAddr = format!("0.0.0.0:{}", cfg.server.grpc_port).parse()?;
     info!("Starting RunIt Maps gRPC server on {}", addr);
+
+    let metrics_addr: SocketAddr = format!("0.0.0.0:{}", cfg.server.metrics_port).parse()?;
+    metrics::init_metrics(metrics_addr);
 
     let valhalla_client = ValhallaClient::new(cfg.valhalla.url.clone());
     let state = build_state::new_build_state();

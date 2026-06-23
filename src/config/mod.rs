@@ -11,6 +11,7 @@ pub struct AppConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
     pub grpc_port: u16,
+    pub metrics_port: u16,
     pub max_request_size_mb: u32,
 }
 
@@ -60,6 +61,7 @@ impl Default for AppConfig {
         Self {
             server: ServerConfig {
                 grpc_port: 50051,
+                metrics_port: 6060,
                 max_request_size_mb: 4,
             },
             valhalla: ValhallaConfig {
@@ -92,6 +94,7 @@ impl AppConfig {
     pub fn from_env() -> Result<Self> {
         let mut cfg = config::Config::builder()
             .set_default("server.grpc_port", "50051")?
+            .set_default("server.metrics_port", "6060")?
             .set_default("valhalla.url", "http://localhost:8002")?
             .set_default("valhalla.timeout_seconds", "10")?
             .set_default("valhalla.max_alternatives", "3")?

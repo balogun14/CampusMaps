@@ -20,6 +20,8 @@ geo-types = "0.7"
 thiserror = "2"
 anyhow = "1"
 uuid = { version = "1", features = ["v4"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
 
 [build-dependencies]
 tonic-build = "0.12"

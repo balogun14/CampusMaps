@@ -1,5 +1,6 @@
 [server]
 grpc_port = 50051
+metrics_port = 6060
 max_request_size_mb = 4
 
 [valhalla]

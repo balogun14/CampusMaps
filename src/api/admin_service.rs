@@ -94,6 +94,11 @@ impl AdminService for AdminServiceImpl {
                         duration_secs = %report.duration_secs,
                         "Background tile build complete"
                     );
+                    crate::common::metrics::record_tile_build(
+                        &region_id,
+                        duration as f64,
+                        true,
+                    );
                     let mut state = build_state.lock().unwrap();
                     state.insert(
                         region_id.clone(),
@@ -111,6 +116,11 @@ impl AdminService for AdminServiceImpl {
                         job = %job_id_clone,
                         error = %e,
                         "Background tile build failed"
+                    );
+                    crate::common::metrics::record_tile_build(
+                        &region_id,
+                        duration as f64,
+                        false,
                     );
                     let mut state = build_state.lock().unwrap();
                     state.insert(

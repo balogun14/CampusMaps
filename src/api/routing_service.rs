@@ -104,6 +104,7 @@ impl RoutingService for RoutingServiceImpl {
         &self,
         request: Request<RouteRequest>,
     ) -> Result<Response<RouteResponse>, Status> {
+        let start = std::time::Instant::now();
         let inner = request.into_inner();
         info!(
             origin = ?inner.origin,
@@ -111,23 +112,46 @@ impl RoutingService for RoutingServiceImpl {
             "Route request received"
         );
 
+        crate::common::metrics::record_route_request(&inner.costing.to_string());
+
         // Validate
-        validate_route_request(&inner)?;
+        if let Err(e) = validate_route_request(&inner) {
+            crate::common::metrics::record_error("validation");
+            return Err(e.into());
+        }
 
         // Build Valhalla request
         let valhalla_req = self
             .build_valhalla_request(&inner)
-            .map_err(|e| Status::internal(e.to_string()))?;
+            .map_err(|e| {
+                crate::common::metrics::record_error("request_build");
+                Status::internal(e.to_string())
+            })?;
 
         // Call Valhalla HTTP API
-        let raw_response = self
-            .valhalla_client
-            .route(&valhalla_req)
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
+        let raw_response = match self.valhalla_client.route(&valhalla_req).await {
+            Ok(r) => {
+                crate::common::metrics::record_valhalla_response(
+                    start.elapsed().as_secs_f64(),
+                    true,
+                );
+                r
+            }
+            Err(e) => {
+                crate::common::metrics::record_valhalla_response(
+                    start.elapsed().as_secs_f64(),
+                    false,
+                );
+                return Err(Status::internal(e.to_string()));
+            }
+        };
 
         // Parse Valhalla response into our proto
-        let response = parse_valhalla_response(&raw_response, &inner)?;
+        let response = parse_valhalla_response(&raw_response, &inner)
+            .map_err(|e| {
+                crate::common::metrics::record_error("response_parse");
+                Status::internal(e.to_string())
+            })?;
 
         Ok(Response::new(response))
     }
