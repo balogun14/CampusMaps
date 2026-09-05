@@ -6,6 +6,7 @@ FROM rust:1.86-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y \
     protobuf-compiler \
     libprotobuf-dev \
+    libssl-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
@@ -32,6 +33,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /app/target/release/runit-maps /usr/local/bin/runit-maps
 COPY config /app/config
 
+WORKDIR /app
 EXPOSE 50051
 
 ENTRYPOINT ["runit-maps"]

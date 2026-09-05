@@ -89,18 +89,24 @@ pub fn parse_valhalla_response(
                 .unwrap_or("")
                 .to_string();
 
-            let start_lat = maneuver
+            let begin_idx = maneuver
                 .get("begin_shape_index")
                 .and_then(|v| v.as_u64())
-                .and_then(|idx| decoded_shape.get(idx as usize))
-                .map(|p| p.lat)
-                .unwrap_or(0.0);
-            let start_lng = maneuver
-                .get("begin_shape_index")
+                .unwrap_or(0) as usize;
+            let end_idx = maneuver
+                .get("end_shape_index")
                 .and_then(|v| v.as_u64())
-                .and_then(|idx| decoded_shape.get(idx as usize))
-                .map(|p| p.lng)
-                .unwrap_or(0.0);
+                .unwrap_or(begin_idx as u64) as usize;
+            let end_idx = end_idx.min(decoded_shape.len().saturating_sub(1));
+
+            let step_polyline = if begin_idx <= end_idx && end_idx < decoded_shape.len() {
+                polyline::encode_points(&decoded_shape[begin_idx..=end_idx])
+            } else {
+                String::new()
+            };
+
+            let start_lat = decoded_shape.get(begin_idx).map(|p| p.lat).unwrap_or(0.0);
+            let start_lng = decoded_shape.get(begin_idx).map(|p| p.lng).unwrap_or(0.0);
 
             let step_length = maneuver
                 .get("length")
@@ -134,7 +140,7 @@ pub fn parse_valhalla_response(
                     lat: start_lat,
                     lng: start_lng,
                 }),
-                encoded_polyline: String::new(), // per-step polyline not always available
+                encoded_polyline: step_polyline,
                 distance_meters: step_length as f32,
                 duration_seconds: step_time as f32,
                 maneuver_type: maneuver_type.into(),

@@ -11,13 +11,9 @@ find_path(VALHALLA_INCLUDE_DIR
     PATHS /usr/local/include /usr/include
 )
 
-# Find Valhalla libraries
-find_library(VALHALLA_BALDR_LIB
-    NAMES valhalla_baldr
-    PATHS /usr/local/lib /usr/lib
-)
-find_library(VALHALLA_SIF_LIB
-    NAMES valhalla_sif
+# Find Valhalla library (single libvalhalla.so since 3.x)
+find_library(VALHALLA_LIB
+    NAMES valhalla
     PATHS /usr/local/lib /usr/lib
 )
 
@@ -32,7 +28,7 @@ target_include_directories(campus_pedestrian
 )
 
 target_link_libraries(campus_pedestrian
-    PRIVATE ${VALHALLA_BALDR_LIB} ${VALHALLA_SIF_LIB}
+    PRIVATE ${VALHALLA_LIB}
 )
 
 # Install to standard location

@@ -45,6 +45,7 @@ class RouteStep {
   final String streetName;
   final double lat;
   final double lng;
+  final String encodedPolyline;
   final double distanceMeters;
   final double durationSeconds;
   final String direction;
@@ -56,6 +57,7 @@ class RouteStep {
     required this.streetName,
     required this.lat,
     required this.lng,
+    required this.encodedPolyline,
     required this.distanceMeters,
     required this.durationSeconds,
     required this.direction,
@@ -68,6 +70,7 @@ class RouteStep {
         streetName: json['streetName'] as String? ?? '',
         lat: (json['startLocation']?['lat'] as num?)?.toDouble() ?? 0,
         lng: (json['startLocation']?['lng'] as num?)?.toDouble() ?? 0,
+        encodedPolyline: json['encodedPolyline'] as String? ?? '',
         distanceMeters: (json['distanceMeters'] as num?)?.toDouble() ?? 0,
         durationSeconds: (json['durationSeconds'] as num?)?.toDouble() ?? 0,
         direction: json['direction'] as String? ?? '',

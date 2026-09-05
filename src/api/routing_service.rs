@@ -44,14 +44,16 @@ impl RoutingServiceImpl {
             locations.push(serde_json::json!({
                 "lat": origin.lat,
                 "lon": origin.lng,
-                "type": "break"
+                "type": "break",
+                "radius": 50
             }));
         }
         if let Some(dest) = &req.destination {
             locations.push(serde_json::json!({
                 "lat": dest.lat,
                 "lon": dest.lng,
-                "type": "break"
+                "type": "break",
+                "radius": 50
             }));
         }
 
@@ -95,7 +97,7 @@ Ok(serde_json::json!({
      "waypoints": req.waypoints.iter().map(|latlng| {
          serde_json::json!({
              "lat": latlng.lat,
-             "lng": latlng.lng
+             "lon": latlng.lng
          })
      }).collect::<Vec<_>>(),
      "id": format!("runit-{}", std::time::SystemTime::now()

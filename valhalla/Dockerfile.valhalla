@@ -8,16 +8,19 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install Valhalla build + runtime deps
 RUN apt-get update && apt-get install -y \
     cmake \
+    autoconf-archive \
     build-essential \
     ccache \
     curl \
     git \
     libboost-all-dev \
+    libczmq-dev \
     libcurl4-openssl-dev \
     libgeos-dev \
     libluajit-5.1-dev \
     liblz4-dev \
     libprotobuf-dev \
+    libprotobuf-c-dev \
     libprotoc-dev \
     libspatialite-dev \
     libsqlite3-dev \
@@ -32,11 +35,24 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Build prime_server from source (Valhalla HTTP dependency)
+WORKDIR /tmp
+RUN git clone --depth 1 --recurse-submodules https://github.com/kevinkreiser/prime_server.git
+WORKDIR /tmp/prime_server
+RUN ./autogen.sh && ./configure --prefix=/usr/local && make -j$(nproc) && make install
+
 # Build Valhalla from source
 ARG VALHALLA_VERSION=3.4.0
 WORKDIR /tmp
-RUN git clone --depth 1 --branch ${VALHALLA_VERSION} https://github.com/valhalla/valhalla.git
+RUN git clone --depth 1 --recurse-submodules --branch ${VALHALLA_VERSION} https://github.com/valhalla/valhalla.git
 WORKDIR /tmp/valhalla/build
+# Fix GCC 13 compat issues in Valhalla 3.4.0
+RUN sed -i '1i #include <cstdint>' /tmp/valhalla/valhalla/baldr/graphconstants.h
+RUN set -e; for f in /tmp/valhalla/src/baldr/transit*.cc; do \
+      [ -f "$f" ] || continue; \
+      grep -q 'std::runtime_error' "$f" || continue; \
+      grep -q '#include <stdexcept>' "$f" && continue; \
+      sed -i '1i #include <stdexcept>' "$f"; done
 RUN cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -52,18 +68,6 @@ RUN make -j$(nproc)
 RUN make install
 
 # ============================================================
-# Build the custom campus_pedestrian plugin
-# ============================================================
-WORKDIR /tmp/campus_cost
-COPY valhalla/campus_cost .
-
-RUN mkdir -p build && cd build && \
-    cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_PREFIX_PATH=/usr/local \
-    && make -j$(nproc) && make install
-
-# ============================================================
 # Minimal runtime image
 # ============================================================
 FROM ubuntu:24.04
@@ -75,6 +79,7 @@ RUN apt-get update && apt-get install -y \
     libboost-locale1.83.0 \
     libboost-program-options1.83.0 \
     libboost-system1.83.0 \
+    libczmq4 \
     libcurl4t64 \
     libgeos-c1t64 \
     libluajit-5.1-2 \
@@ -89,15 +94,11 @@ RUN apt-get update && apt-get install -y \
 
 # Copy Valhalla binaries + libs
 COPY --from=builder /usr/local/bin/valhalla* /usr/local/bin/
+COPY --from=builder /usr/local/lib/libprime_server* /usr/local/lib/
 COPY --from=builder /usr/local/lib/libvalhalla* /usr/local/lib/
-COPY --from=builder /usr/local/lib/libcampus_pedestrian* /usr/local/lib/
-
-# Valhalla data install (config, lua scripts, etc.)
-COPY --from=builder /usr/local/share/valhalla /usr/local/share/valhalla
-
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
-    CMD curl -f http://localhost:8002/health || exit 1
+    CMD curl -f http://localhost:8002/status || exit 1
 
 ENTRYPOINT ["valhalla_service", "/config/valhalla.json"]

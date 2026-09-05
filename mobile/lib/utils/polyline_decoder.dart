@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 List<LatLngPoint> decodePolyline(String encoded) {
   final len = encoded.length;
   int index = 0;

@@ -3,211 +3,286 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RunIt Maps — Campus Route Visualizer</title>
+<title>RunIt Maps — Editorial Campus</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Newsreader:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, -apple-system, sans-serif; display: flex; height: 100vh; }
-#map { flex: 1; height: 100%; }
-#sidebar { width: 380px; overflow-y: auto; padding: 16px; border-left: 1px solid #ccc; background: #fafafa; }
-h2 { font-size: 16px; margin-bottom: 8px; }
-label { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; }
-select, button { width: 100%; padding: 8px 12px; margin-top: 4px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
-button { background: #1a73e8; color: #fff; border: none; cursor: pointer; font-weight: 600; }
-button:hover { background: #1557b0; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-.coord-info { font-size: 12px; color: #555; margin-top: 4px; word-break: break-all; }
-#steps { margin-top: 12px; }
-.step { padding: 10px; margin-bottom: 6px; border-radius: 6px; background: #fff; border: 1px solid #e0e0e0; font-size: 13px; }
-.step .step-header { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
-.step .step-header .num { color: #1a73e8; }
-.step .step-header .dist { color: #666; }
-.step .street { color: #333; }
-.step .dir { color: #777; font-size: 12px; }
-.step.custom-path { border-left: 4px solid #e8711a; background: #fff8f0; }
-#summary { margin: 12px 0; padding: 10px; border-radius: 6px; background: #e8f5e9; font-size: 13px; }
-#error { margin-top: 8px; padding: 8px; border-radius: 6px; background: #ffebee; color: #c62828; font-size: 13px; display: none; }
-.legend { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; }
-.legend-item { display: flex; align-items: center; gap: 4px; }
-.legend-color { width: 16px; height: 4px; border-radius: 2px; }
+:root{ /* Editorial warm — default, ownable, not generic */
+  --blue:#E85D4A; --red:#E85D4A; --green:#2B5A3E; --yellow:#F2C14E; --sage:#8A9A8B;
+  --bg:#FDF8F0; --card:#FFFBF5; --card2:#F5EFE2; --border:#E8E0D6; --divider:#EDE6DB;
+  --text:#2B2A26; --text2:#6B665E; --text3:#9A9590; --shadow:rgba(43,42,38,.08);
+}
+:root.dark{
+  --blue:#00E5FF; --red:#FF5252; --green:#00E676; --yellow:#FFD600;
+  --bg:#0F1115; --card:#1A1E23; --card2:#232830; --border:#2F353D; --divider:#2A3038;
+  --text:#E8EAED; --text2:#9AA0A6; --text3:#5F6368; --shadow:rgba(0,0,0,.4);
+}
+:root.light{
+  --blue:#1A73E8; --red:#EA4335; --green:#34A853; --yellow:#FBBC05;
+  --bg:#E5E3DF; --card:#FFFFFF; --card2:#F8F9FA; --border:#DADCE0; --divider:#E8EAED;
+  --text:#202124; --text2:#5F6368; --text3:#80868B; --shadow:rgba(60,64,67,.15);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,Roboto,Arial,sans-serif;color:var(--text);height:100vh;overflow:hidden;background:var(--bg)}
+#map{position:absolute;inset:0;z-index:1}
+#topBar{position:absolute;top:12px;left:12px;right:12px;z-index:1000;display:flex;align-items:center;gap:0;max-width:460px}
+#searchCard{flex:1;display:flex;align-items:center;background:var(--card);border-radius:28px;height:52px;box-shadow:0 4px 20px var(--shadow),0 1px 3px rgba(0,0,0,.1);padding:0 4px;border:1px solid var(--border)}
+#searchCard .icon-btn{width:40px;height:40px;border:none;background:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2)}
+#searchCard .icon-btn:hover{background:var(--card2)}
+#searchInput{flex:1;border:none;outline:none;font-size:13px;color:var(--text);padding:8px 4px;font-family:Inter;font-style:italic}
+#searchInput::placeholder{color:var(--text3)}
+#divider{width:1px;height:24px;background:var(--divider);margin:0 4px}
+#avatar{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:Newsreader,serif;font-size:16px;margin-right:4px}
+#themePill{position:absolute;top:70px;left:12px;z-index:999;background:var(--card);border:1px solid var(--border);border-radius:20px;display:flex;overflow:hidden;box-shadow:0 2px 12px var(--shadow)}
+#themePill button{padding:7px 12px;border:none;background:transparent;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;letter-spacing:.02em}
+#themePill button.active{background:var(--blue);color:#fff}
+#themePill button.active.editorial{background:#1A2744;color:#fff}
+#directionsCard{position:absolute;top:108px;left:12px;z-index:999;max-width:460px;width:calc(100% - 24px);background:var(--card);border-radius:16px;box-shadow:0 8px 32px var(--shadow),0 1px 4px rgba(0,0,0,.08);border:1px solid var(--border);overflow:hidden}
+#dirsHeader{display:flex;align-items:center;padding:10px 10px 0 10px;gap:6px;overflow-x:auto}
+.chip{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--card2);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;color:var(--text);white-space:nowrap;letter-spacing:.02em}
+.chip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chip .material-icons{font-size:16px}
+#dirsInputs{padding:14px 16px 8px;display:flex;gap:12px;align-items:center}
+#dotsCol{display:flex;flex-direction:column;align-items:center;gap:2px}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot-origin{background:var(--card);border:2.2px solid var(--sage)}
+.dot-dest{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+.vline{width:2px;height:22px;background:var(--border)}
+#inputsCol{flex:1;display:flex;flex-direction:column;gap:0}
+.field-row{display:flex;align-items:center;gap:8px;padding:7px 0}
+.field-row input{flex:1;border:none;outline:none;font-size:13px;color:var(--text);background:transparent;font-style:italic}
+.field-row input::placeholder{color:var(--text3)}
+.field-row .clear{color:var(--text3);cursor:pointer;font-size:18px}
+#swapBtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--card2);color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center}
+#dirsActions{padding:0 16px 14px;display:flex;gap:8px}
+.btn{padding:10px 16px;border-radius:20px;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center;letter-spacing:.01em}
+.btn-primary{background:var(--blue);color:#fff;flex:1;box-shadow:0 4px 12px rgba(232,93,74,.25)}
+.btn-primary:hover{filter:brightness(1.05)}
+.btn-outline{background:var(--card2);color:var(--text2);border:1px solid var(--border)}
+#modeRow{padding:0 16px 10px;display:flex;gap:6px;overflow-x:auto}
+#summary{margin:0 16px 8px;padding:10px 12px;background:rgba(232,93,74,.08);border:1px solid rgba(232,93,74,.15);border-radius:10px;font-size:13px;display:none;color:var(--text);font-style:italic}
+#summary strong{color:var(--blue);font-family:Newsreader,serif}
+#error{margin:0 16px 8px;padding:10px 12px;background:rgba(232,93,74,.08);color:#B42318;border-radius:10px;font-size:13px;display:none;border-left:4px solid var(--blue)}
+#steps{max-height:28vh;overflow-y:auto}
+.step{padding:11px 16px;display:flex;gap:12px;align-items:flex-start;border-top:1px solid var(--divider);cursor:pointer}
+.step:hover{background:var(--card2)}
+.step.active{background:rgba(232,93,74,.07);border-left:3px solid var(--blue)}
+.step-icon{width:32px;height:32px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text2);font-size:13px}
+.step-icon.campus{background:rgba(242,193,78,.18);border-color:rgba(242,193,78,.4);color:#8A6A00}
+.step-main{flex:1;min-width:0}
+.step-instr{font-size:13px;color:var(--text);line-height:1.45;font-style:italic}
+.step-street{font-size:11px;color:var(--text2);letter-spacing:.01em}
+.step-meta{font-size:11px;color:var(--text3)}
+.campus-badge{font-size:8px;font-weight:800;background:var(--yellow);color:#000;padding:2px 6px;border-radius:4px;margin-right:6px;letter-spacing:.06em}
+#rightControls{position:absolute;right:12px;bottom:24px;z-index:900;display:flex;flex-direction:column;gap:8px;align-items:center}
+.ctrl-group{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 2px 12px var(--shadow);overflow:hidden}
+.ctrl-btn{width:40px;height:40px;border:none;background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2)}
+.ctrl-btn:hover{background:var(--card2)}
+.ctrl-btn .material-icons{font-size:20px}
+.ctrl-sep{height:1px;background:var(--divider)}
+#hint{position:absolute;top:108px;left:50%;transform:translateX(-50%);z-index:900;background:#1A2744;color:#FEF7E0;padding:8px 14px;border-radius:20px;font-size:12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);font-style:italic}
+#hint .material-icons{font-size:16px;color:var(--yellow)}
+.leaflet-control-zoom{display:none}
+.gpin{width:34px;height:34px;border-radius:50%;border:2.5px solid #FFFBF5;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;font-family:Newsreader,serif;box-shadow:0 2px 10px rgba(0,0,0,.2);position:relative}
+.gpin-origin{background:#2B5A3E}
+.gpin-dest{background:#E85D4A}
+#streetPreview{display:none;position:absolute;bottom:16px;left:12px;z-index:998;max-width:460px;width:calc(100% - 24px);background:var(--card);border-radius:16px;box-shadow:0 8px 32px var(--shadow);border:1px solid var(--border);overflow:hidden}
+#streetPreview.show{display:block}
+#spHeader{height:140px;position:relative;background:var(--card2)}
+#spMap{height:100%;width:100%}
+#spBadge{position:absolute;left:10px;top:10px;background:#1A2744;color:#FEF7E0;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px;letter-spacing:.04em}
+#spClose{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2)}
+#spBody{padding:12px 16px}
+#spInstr{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;font-family:Newsreader,serif;font-style:italic}
+#spStreet{font-size:12px;color:var(--text2);margin-bottom:4px}
+#spMeta{font-size:11px;color:var(--text3);margin-bottom:10px}
+#spActions{display:flex;gap:8px}
+#spActions .btn{flex:1}
+@media(max-width:640px){
+  #topBar{max-width:none}
+  #directionsCard{top:auto;bottom:0;left:0;right:0;max-width:none;width:100%;border-radius:20px 20px 0 0;max-height:60vh}
+  #steps{max-height:24vh}
+  #rightControls{bottom:62vh}
+  #themePill{top:70px}
+  #hint{top:72px}
+}
 </style>
 </head>
 <body>
-
 <div id="map"></div>
-<div id="sidebar">
-  <h2>Route Visualizer</h2>
-
-  <label>Costing Mode</label>
-  <select id="costing">
-    <option value="pedestrian">Pedestrian</option>
-    <option value="campus_pedestrian" selected>Campus Pedestrian</option>
-    <option value="auto">Auto</option>
-    <option value="bicycle">Bicycle</option>
-  </select>
-
-  <label>
-    <input type="checkbox" id="avoidStairs" checked />
-    Avoid Stairs
-  </label>
-
-  <label>Walking Speed (km/h)</label>
-  <select id="walkingSpeed">
-    <option value="3">Slow (3 km/h)</option>
-    <option value="5" selected>Moderate (5 km/h)</option>
-    <option value="7">Fast (7 km/h)</option>
-  </select>
-
-  <div id="originInfo" class="coord-info">Origin: click map to set</div>
-  <div id="destInfo" class="coord-info">Destination: click map to set</div>
-
-  <button id="routeBtn" disabled>Get Route</button>
-
-  <div id="error"></div>
+<div id="topBar">
+  <div id="searchCard">
+    <button class="icon-btn" title="Menu"><span class="material-icons">menu</span></button>
+    <input id="searchInput" placeholder="Search RunIt — buildings, halls, gates" />
+    <div id="divider"></div>
+    <button class="icon-btn" style="color:var(--blue)" title="Search"><span class="material-icons">search</span></button>
+    <div id="avatar">R</div>
+  </div>
+</div>
+<div id="themePill">
+  <button id="btnEd" class="active" onclick="setTheme('editorial')"><span class="material-icons" style="font-size:14px">auto_stories</span> Editorial</button>
+  <button id="btnLight" onclick="setTheme('light')"><span class="material-icons" style="font-size:14px">light_mode</span> Light</button>
+  <button id="btnDark" onclick="setTheme('dark')"><span class="material-icons" style="font-size:14px">dark_mode</span> Dark</button>
+  <button id="btnSat" onclick="setTheme('satellite')"><span class="material-icons" style="font-size:14px">satellite_alt</span> Satellite</button>
+</div>
+<div id="directionsCard">
+  <div id="dirsHeader">
+    <button class="chip active" data-costing="campus_pedestrian"><span class="material-icons">directions_walk</span> Stroll</button>
+    <button class="chip" data-costing="pedestrian"><span class="material-icons">hiking</span> Wander</button>
+    <button class="chip" data-costing="bicycle"><span class="material-icons">directions_bike</span> Cycle</button>
+    <button class="chip" data-costing="auto"><span class="material-icons">directions_car</span> Drive</button>
+  </div>
+  <div id="dirsInputs">
+    <div id="dotsCol"><div class="dot dot-origin"></div><div class="vline"></div><div class="dot dot-dest"></div></div>
+    <div id="inputsCol">
+      <div class="field-row"><span class="material-icons" style="font-size:18px;color:var(--sage)">my_location</span><input id="originInput" placeholder="Where from?" value="6.51350, 3.35150" /><span class="material-icons clear" onclick="clearField('origin')">close</span></div>
+      <div style="height:1px;background:var(--divider);margin-left:26px"></div>
+      <div class="field-row"><span class="material-icons" style="font-size:18px;color:var(--blue)">location_on</span><input id="destInput" placeholder="Where to?" value="6.51650, 3.34900" /><span class="material-icons clear" onclick="clearField('dest')">close</span></div>
+    </div>
+    <button id="swapBtn" title="Swap"><span class="material-icons">swap_vert</span></button>
+  </div>
+  <div id="modeRow">
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)"><input type="checkbox" id="avoidStairs" checked /> Avoid stairs</label>
+    <select id="walkingSpeed" style="margin-left:auto;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:4px 8px;font-size:11px"><option value="3">Slow 3 km/h</option><option value="5" selected>Stroll 5 km/h</option><option value="7">Brisk 7 km/h</option></select>
+  </div>
+  <div id="dirsActions">
+    <button class="btn btn-primary" id="routeBtn"><span class="material-icons" style="font-size:18px">near_me</span> Get directions</button>
+    <button class="btn btn-outline" onclick="clearAll()"><span class="material-icons" style="font-size:18px">close</span> Clear</button>
+  </div>
   <div id="summary"></div>
+  <div id="error"></div>
   <div id="steps"></div>
 </div>
-
+<div id="streetPreview">
+  <div id="spHeader">
+    <div id="spMap"></div>
+    <div id="spBadge"><span class="material-icons" style="font-size:14px">streetview</span> <span id="spStepNum">Step 1</span></div>
+    <button id="spClose" onclick="hideStreetPreview()"><span class="material-icons" style="font-size:18px">close</span></button>
+  </div>
+  <div id="spBody">
+    <div id="spInstr">Stroll north through the colonnade</div>
+    <div id="spStreet">Campus Walk</div>
+    <div id="spMeta">120 m · 1 min</div>
+    <div id="spActions">
+      <button class="btn btn-primary" id="spStreetBtn"><span class="material-icons" style="font-size:18px">panorama</span> Peek street</button>
+      <button class="btn btn-outline" id="spDirBtn"><span class="material-icons" style="font-size:18px">near_me</span> Go</button>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">Opens in Maps — no key needed</div>
+  </div>
+</div>
+<div id="hint"><span class="material-icons">auto_stories</span> <span id="hintText">Editorial • Click map to set points — drag markers</span></div>
+<div id="rightControls">
+  <div class="ctrl-group"><button class="ctrl-btn" onclick="toggleLayer()" title="Layers"><span class="material-icons">layers</span></button></div>
+  <div class="ctrl-group"><button class="ctrl-btn" onclick="centerOnMarkers()" title="My location"><span class="material-icons" style="color:var(--blue)">my_location</span></button></div>
+  <div class="ctrl-group"><button class="ctrl-btn" onclick="map.zoomIn()" title="Zoom in"><span class="material-icons">add</span></button><div class="ctrl-sep"></div><button class="ctrl-btn" onclick="map.zoomOut()" title="Zoom out"><span class="material-icons">remove</span></button></div>
+</div>
 <script>
-const map = L.map('map').setView([6.515, 3.350], 16);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
-
-const originMarker = L.marker([6.5135, 3.3515], {
-  draggable: true,
-  icon: L.divIcon({ className: 'custom-marker', html: '<div style="background:#1a73e8;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">A</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
-});
-const destMarker = L.marker([6.5165, 3.3490], {
-  draggable: true,
-  icon: L.divIcon({ className: 'custom-marker', html: '<div style="background:#c62828;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">B</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
-});
-let originSet = false, destSet = false;
-let routeLine = null, customRouteLine = null;
-
-function updateCoordInfo() {
-  const origin = originMarker.getLatLng();
-  const dest = destMarker.getLatLng();
-  document.getElementById('originInfo').textContent = `Origin: ${origin.lat.toFixed(5)}, ${origin.lng.toFixed(5)}`;
-  document.getElementById('destInfo').textContent = `Destination: ${dest.lat.toFixed(5)}, ${dest.lng.toFixed(5)}`;
-  originSet = destSet = true;
-  document.getElementById('routeBtn').disabled = false;
+let theme='editorial';
+const map = L.map('map', {zoomControl:false}).setView([6.515,3.350],16);
+function tileUrl(t){ if(t==='satellite') return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'; if(t==='dark') return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'; if(t==='light') return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'; return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'; }
+let tileLayer = L.tileLayer(tileUrl(theme),{maxZoom:19, attribution:'&copy; OSM & CARTO', subdomains: theme==='light'?[]:['a','b','c','d']}).addTo(map);
+let spMap=null, spMarker=null;
+function setTheme(t){
+  theme=t;
+  document.documentElement.className=t;
+  document.getElementById('btnEd').classList.toggle('active', t==='editorial');
+  document.getElementById('btnLight').classList.toggle('active', t==='light');
+  document.getElementById('btnDark').classList.toggle('active', t==='dark');
+  document.getElementById('btnSat').classList.toggle('active', t==='satellite');
+  map.removeLayer(tileLayer);
+  tileLayer=L.tileLayer(tileUrl(t),{maxZoom:19, subdomains: (t==='light'?[]:['a','b','c','d'])}).addTo(map);
+  if(spMap){ spMap.remove(); spMap=null; }
+  if(t==='editorial') document.getElementById('hintText').textContent='Editorial • Click map to set points — drag markers';
+  else if(t==='dark') document.getElementById('hintText').textContent='Dark Premium • Neon routes';
+  else document.getElementById('hintText').textContent='Light • Google clone';
 }
-
-originMarker.on('dragend', updateCoordInfo);
-destMarker.on('dragend', updateCoordInfo);
-
-map.on('click', function(e) {
-  if (!originSet) {
-    originMarker.setLatLng(e.latlng);
-    originMarker.addTo(map);
-    originSet = true;
-  } else if (!destSet) {
-    destMarker.setLatLng(e.latlng);
-    destMarker.addTo(map);
-    destSet = true;
-  } else {
-    originMarker.setLatLng(e.latlng);
-    destSet = false;
-    destMarker.removeFrom(map);
-  }
-  updateCoordInfo();
-});
-
-updateCoordInfo();
-
-document.getElementById('routeBtn').addEventListener('click', async function() {
-  const btn = this;
-  btn.disabled = true;
-  btn.textContent = 'Routing...';
-
-  document.getElementById('summary').innerHTML = '';
-  document.getElementById('steps').innerHTML = '';
-  document.getElementById('error').style.display = 'none';
-  if (routeLine) map.removeLayer(routeLine);
-  if (customRouteLine) map.removeLayer(customRouteLine);
-
-  const origin = originMarker.getLatLng();
-  const dest = destMarker.getLatLng();
-
-  const body = {
-    origin: { lat: origin.lat, lng: origin.lng },
-    destination: { lat: dest.lat, lng: dest.lng },
-    costing: document.getElementById('costing').value,
-    avoidStairs: document.getElementById('avoidStairs').checked,
-    walkingSpeedKmh: parseFloat(document.getElementById('walkingSpeed').value),
-  };
-
-  try {
-    const res = await fetch('/v1/route', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      document.getElementById('error').textContent = data.error || 'Routing failed';
-      document.getElementById('error').style.display = 'block';
-      return;
-    }
-
-    // Decode polyline
-    const decoded = decodePolyline(data.encodedPolyline);
-    const latlngs = decoded.map(p => [p.lat, p.lng]);
-    const polylineKwargs = { color: '#1a73e8', weight: 4, opacity: 0.8 };
-    routeLine = L.polyline(latlngs, polylineKwargs).addTo(map);
-    map.fitBounds(routeLine.getBounds().pad(0.1));
-
-    // Show summary
-    const s = data.summary;
-    document.getElementById('summary').innerHTML = `
-      <strong>Distance:</strong> ${s.distanceKm.toFixed(2)} km &middot;
-      <strong>Duration:</strong> ${s.durationFormatted}
-    `;
-
-    // Show steps
-    const stepsHtml = data.steps.map(step => {
-      const isCustom = step.isCustomPath;
-      const dirIcon = { north: '↑', south: '↓', east: '→', west: '←', straight: '↑', northeast: '↗', northwest: '↖', southeast: '↘', southwest: '↙' }[step.direction] || '';
-      return `<div class="step${isCustom ? ' custom-path' : ''}">
-        <div class="step-header">
-          <span class="num">#${step.stepNumber}</span>
-          <span class="dist">${step.distanceMeters.toFixed(0)} m</span>
-        </div>
-        <div class="street">${dirIcon} ${step.instruction}</div>
-        <div class="dir">${step.streetName}${isCustom ? ' &middot; <strong>Campus Path</strong>' : ''}</div>
-      </div>`;
+function toggleLayer(){ setTheme(theme==='editorial'?'dark': theme==='dark'?'light':'editorial'); }
+function gpin(color,label){
+  const isEd=theme==='editorial', isDark=theme==='dark';
+  let bg=color==='green'?(isEd?'#2B5A3E':isDark?'#00E676':'#34A853'):(isEd?'#E85D4A':isDark?'#FF5252':'#EA4335');
+  return L.divIcon({className:'',html:`<div class="gpin ${color==='green'?'gpin-origin':'gpin-dest'}" style="background:${bg}">${label}</div>`,iconSize:[34,34],iconAnchor:[17,34]});
+}
+const originMarker = L.marker([6.5135,3.3515],{draggable:true,icon:gpin('green','A')}).addTo(map);
+const destMarker = L.marker([6.5165,3.3490],{draggable:true,icon:gpin('red','B')}).addTo(map);
+let routeLine=null, routeOutline=null, routeGlow=null, stepMarker=null, currentSteps=[];
+function initSpMap(lat,lng){
+  if(spMap){ spMap.setView([lat,lng],19); if(spMarker) spMarker.setLatLng([lat,lng]); return; }
+  spMap=L.map('spMap',{zoomControl:false, dragging:false, scrollWheelZoom:false}).setView([lat,lng],19);
+  L.tileLayer(tileUrl(theme),{maxZoom:19, subdomains:theme==='light'?[]:['a','b','c','d']}).addTo(spMap);
+  const pinC=theme==='editorial'?'#E85D4A':'#00E5FF';
+  spMarker=L.marker([lat,lng],{icon:L.divIcon({className:'',html:`<div style="width:28px;height:28px;border-radius:50%;background:${pinC};border:2.5px solid #FFFBF5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)"><span class="material-icons" style="font-size:16px;color:#fff">streetview</span></div>`,iconSize:[28,28],iconAnchor:[14,14]})}).addTo(spMap);
+}
+function updateInputs(){ const o=originMarker.getLatLng(), d=destMarker.getLatLng(); document.getElementById('originInput').value=`${o.lat.toFixed(5)}, ${o.lng.toFixed(5)}`; document.getElementById('destInput').value=`${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}`; }
+originMarker.on('dragend',updateInputs); destMarker.on('dragend',updateInputs);
+map.on('click',e=>{ originMarker.setLatLng(e.latlng); updateInputs(); });
+function clearField(w){ if(w==='origin') document.getElementById('originInput').value=''; else document.getElementById('destInput').value=''; }
+function clearAll(){ document.getElementById('originInput').value=''; document.getElementById('destInput').value=''; document.getElementById('summary').style.display='none'; document.getElementById('steps').innerHTML=''; document.getElementById('error').style.display='none'; hideStreetPreview(); if(routeLine) map.removeLayer(routeLine); if(routeOutline) map.removeLayer(routeOutline); if(routeGlow) map.removeLayer(routeGlow); if(stepMarker) map.removeLayer(stepMarker); }
+function centerOnMarkers(){ const g=new L.featureGroup([originMarker,destMarker]); map.fitBounds(g.getBounds().pad(0.2)); }
+document.getElementById('swapBtn').onclick=()=>{ const a=originMarker.getLatLng(), b=destMarker.getLatLng(); originMarker.setLatLng(b); destMarker.setLatLng(a); updateInputs(); };
+document.querySelectorAll('.chip').forEach(c=>{ c.onclick=()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); }; });
+document.getElementById('routeBtn').addEventListener('click', async function(){
+  const btn=this; btn.disabled=true; btn.innerHTML='<span class="material-icons" style="font-size:18px">hourglass_empty</span> Charting…';
+  document.getElementById('summary').style.display='none'; document.getElementById('steps').innerHTML=''; document.getElementById('error').style.display='none';
+  if(routeLine) map.removeLayer(routeLine); if(routeOutline) map.removeLayer(routeOutline); if(routeGlow) map.removeLayer(routeGlow);
+  const origin=originMarker.getLatLng(), dest=destMarker.getLatLng();
+  const costing=document.querySelector('.chip.active')?.dataset.costing || 'campus_pedestrian';
+  const body={origin:{lat:origin.lat,lng:origin.lng},destination:{lat:dest.lat,lng:dest.lng},costing,avoidStairs:document.getElementById('avoidStairs').checked,walkingSpeedKmh:parseFloat(document.getElementById('walkingSpeed').value)};
+  try{
+    const res=await fetch('http://localhost:8080/v1/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    if(!res.ok){ document.getElementById('error').textContent=data.error||'Routing failed'; document.getElementById('error').style.display='block'; return; }
+    const decoded=decodePolyline(data.encodedPolyline); const latlngs=decoded.map(p=>[p.lat,p.lng]);
+    const glow=theme==='editorial'?'rgba(232,93,74,.18)':(theme==='dark'?'rgba(0,229,255,.18)':'rgba(26,115,232,.15)');
+    const core=theme==='editorial'?'#E85D4A':(theme==='dark'?'#00E5FF':'#1A73E8');
+    routeGlow=L.polyline(latlngs,{color:glow,weight:12,opacity:1}).addTo(map);
+    routeOutline=L.polyline(latlngs,{color:theme==='dark'?'#0F1115':'#FFFBF5',weight:7,opacity:1}).addTo(map);
+    routeLine=L.polyline(latlngs,{color:core,weight:4,opacity:1}).addTo(map);
+    map.fitBounds(routeLine.getBounds().pad(0.15));
+    const s=data.summary;
+    document.getElementById('summary').innerHTML=`<strong style="font-family:Newsreader,serif">${s.durationFormatted}</strong> · ${s.distanceKm.toFixed(2)} km · Curated wander`;
+    document.getElementById('summary').style.display='block';
+    currentSteps=data.steps;
+    document.getElementById('steps').innerHTML=data.steps.map((step,i)=>{
+      const isCustom=step.isCustomPath; const dirIcon={north:'↑',south:'↓',east:'→',west:'←',straight:'↑',northeast:'↗',northwest:'↖',southeast:'↘',southwest:'↙'}[step.direction]||'→';
+      return `<div class="step" onclick="showStreetPreview(${i})"><div class="step-icon ${isCustom?'campus':''}">${dirIcon}</div><div class="step-main"><div class="step-instr">${isCustom?'<span class="campus-badge">CAMPUS</span>':''}${step.instruction}</div><div class="step-street">${step.streetName} <span style="float:right;color:var(--blue);font-size:11px">Peek ›</span></div><div class="step-meta">${step.distanceMeters.toFixed(0)} m · ${(step.durationSeconds/60).toFixed(0)} min</div></div></div>`;
     }).join('');
-    document.getElementById('steps').innerHTML = stepsHtml;
-
-  } catch (err) {
-    document.getElementById('error').textContent = 'Network error: ' + err.message;
-    document.getElementById('error').style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Get Route';
-  }
+  }catch(err){
+    const msg=(err.message||'').toLowerCase();
+    if(msg.includes('failed to fetch')||msg.includes('network')){
+      const o=originMarker.getLatLng(), d=destMarker.getLatLng();
+      const demoSteps=[{stepNumber:1,instruction:'Stroll north through the colonnade',streetName:'Campus Walk',distanceMeters:180,durationSeconds:130,direction:'north',isCustomPath:true,startLocation:{lat:o.lat,lng:o.lng}},{stepNumber:2,instruction:'Bear right past the Library',streetName:'Scholars Row',distanceMeters:150,durationSeconds:108,direction:'east',isCustomPath:false,startLocation:{lat:(o.lat+d.lat)/2,lng:(o.lng+d.lng)/2}},{stepNumber:3,instruction:'Arrive — you’re here',streetName:'MEDILAG quad',distanceMeters:90,durationSeconds:65,direction:'north',isCustomPath:true,startLocation:{lat:d.lat,lng:d.lng}}];
+      currentSteps=demoSteps;
+      const latlngs=[[o.lat,o.lng],[(o.lat+d.lat)/2,(o.lng+d.lng)/2],[d.lat,d.lng]];
+      routeGlow=L.polyline(latlngs,{color:'rgba(232,93,74,.15)',weight:12}).addTo(map); routeOutline=L.polyline(latlngs,{color:'#FFFBF5',weight:7}).addTo(map); routeLine=L.polyline(latlngs,{color:'#E85D4A',weight:4}).addTo(map);
+      map.fitBounds(routeLine.getBounds().pad(0.15));
+      document.getElementById('summary').innerHTML='<strong style="font-family:Newsreader,serif">5 min</strong> · 0.42 km · Curated wander (offline demo)';
+      document.getElementById('summary').style.display='block';
+      document.getElementById('steps').innerHTML=demoSteps.map((s,i)=>`<div class="step" onclick="showStreetPreview(${i})"><div class="step-icon ${s.isCustomPath?'campus':''}">${{north:'↑',east:'→'}[s.direction]||'→'}</div><div class="step-main"><div class="step-instr">${s.isCustomPath?'<span class="campus-badge">CAMPUS</span>':''}${s.instruction}</div><div class="step-street">${s.streetName} <span style="float:right;color:var(--blue);font-size:11px">Peek ›</span></div><div class="step-meta">${s.distanceMeters.toFixed(0)} m</div></div></div>`).join('');
+      document.getElementById('error').textContent='Offline demo — editorial route shown.'; document.getElementById('error').style.display='block';
+    } else { document.getElementById('error').textContent='Network error: '+err.message; document.getElementById('error').style.display='block'; }
+  } finally{ btn.disabled=false; btn.innerHTML='<span class="material-icons" style="font-size:18px">near_me</span> Get directions'; }
 });
-
-function decodePolyline(encoded) {
-  const len = encoded.length;
-  let index = 0, lat = 0, lng = 0, points = [];
-  while (index < len) {
-    let b, shift = 0, result = 0;
-    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lat += dlat;
-    shift = 0; result = 0;
-    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lng += dlng;
-    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
-  }
-  return points;
+function showStreetPreview(idx){
+  const s=currentSteps[idx]; if(!s) return;
+  const lat=s.startLocation.lat, lng=s.startLocation.lng;
+  document.querySelectorAll('.step').forEach((el,i)=>el.classList.toggle('active', i===idx));
+  if(stepMarker) map.removeLayer(stepMarker);
+  stepMarker=L.marker([lat,lng],{icon:L.divIcon({className:'',html:'<div style="width:36px;height:36px;border-radius:50%;background:'+(s.isCustomPath?'#F2C14E':'#E85D4A')+';border:2.5px solid #FFFBF5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)"><span class="material-icons" style="font-size:18px;color:#1A2744">streetview</span></div>',iconSize:[36,36],iconAnchor:[18,18]})}).addTo(map);
+  map.setView([lat,lng],19);
+  document.getElementById('spStepNum').textContent='Step '+s.stepNumber;
+  document.getElementById('spInstr').textContent=s.instruction;
+  document.getElementById('spStreet').textContent=s.streetName || s.direction;
+  document.getElementById('spMeta').textContent=s.distanceMeters.toFixed(0)+' m · '+(s.durationSeconds/60).toFixed(0)+' min'+(s.isCustomPath?' · Campus path':'');
+  document.getElementById('streetPreview').classList.add('show');
+  setTimeout(()=>initSpMap(lat,lng),100);
+  document.getElementById('spStreetBtn').onclick=()=>window.open('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+lat+','+lng,'_blank');
+  document.getElementById('spDirBtn').onclick=()=>window.open('https://www.google.com/maps/search/?api=1&query='+lat+','+lng,'_blank');
 }
+function hideStreetPreview(){ document.getElementById('streetPreview').classList.remove('show'); document.querySelectorAll('.step').forEach(el=>el.classList.remove('active')); if(stepMarker) map.removeLayer(stepMarker); }
+function decodePolyline(e){const l=e.length;let i=0,lat=0,lng=0,pts=[];while(i<l){let b,s=0,r=0;do{b=e.charCodeAt(i++)-63;r|=(b&0x1f)<<s;s+=5}while(b>=0x20);const dlat=((r&1)?~(r>>1):(r>>1));lat+=dlat;s=0;r=0;do{b=e.charCodeAt(i++)-63;r|=(b&0x1f)<<s;s+=5}while(b>=0x20);const dlng=((r&1)?~(r>>1):(r>>1));lng+=dlng;pts.push({lat:lat/1e5,lng:lng/1e5})}return pts}
+updateInputs();
 </script>
 </body>
 </html>

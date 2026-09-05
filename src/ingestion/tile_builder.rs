@@ -94,6 +94,7 @@ pub async fn rebuild_tiles(
 fn merge_osm_files(pbf_path: &Path, xml_path: &Path, output_path: &Path) -> Result<(), ServiceError> {
     let output = Command::new("osmium")
         .arg("merge")
+        .arg("--overwrite")
         .arg(pbf_path)
         .arg(xml_path)
         .arg("-o")

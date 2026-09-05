@@ -33,78 +33,8 @@ pub fn parse_geojson(path: &Path) -> Result<GeoJsonFeatureCollection, ServiceErr
     Ok(collection)
 }
 
-/// Converts a GeoJSON Feature into an OSM XML representation.
-/// This produces a string that can be merged with Valhalla's tile builder.
-pub fn feature_to_osm_xml(
-    feature: &GeoJsonFeature,
-    way_id_offset: u64,
-    node_id_offset: u64,
-) -> String {
-    let mut xml = String::new();
-    let mut node_id = node_id_offset;
-
-    // Create nodes from coordinates
-    let mut nd_refs = Vec::new();
-    for coord in &feature.geometry.coordinates {
-        if coord.len() >= 2 {
-            let lat = coord[1];
-            let lon = coord[0];
-            xml.push_str(&format!(
-                r#"  <node id="{}" lat="{}" lon="{}" version="1" visible="true"/>"#,
-                node_id, lat, lon
-            ));
-            xml.push('\n');
-            nd_refs.push(node_id);
-            node_id += 1;
-        }
-    }
-
-    // Create the way with node references
-    let way_id = way_id_offset;
-    xml.push_str(&format!(
-        r#"  <way id="{}" version="1" visible="true">"#,
-        way_id
-    ));
-    xml.push('\n');
-
-    for nd in &nd_refs {
-        xml.push_str(&format!("    <nd ref=\"{}\"/>\n", nd));
-    }
-
-    // Copy properties from GeoJSON as OSM tags
-    if let Some(obj) = feature.properties.as_object() {
-        for (key, value) in obj {
-            let val_str = match value {
-                serde_json::Value::String(s) => s.clone(),
-                serde_json::Value::Number(n) => n.to_string(),
-                serde_json::Value::Bool(b) => b.to_string(),
-                _ => continue,
-            };
-            xml.push_str(&format!(
-                r#"    <tag k="{}" v="{}"/>"#,
-                key, val_str
-            ));
-            xml.push('\n');
-        }
-    }
-
-    // Ensure we have highway=path for pedestrian routing
-    if !feature.properties.as_object().map_or(false, |o| o.contains_key("highway")) {
-        xml.push_str(r#"    <tag k="highway" v="path"/>"#);
-        xml.push('\n');
-    }
-    if !feature.properties.as_object().map_or(false, |o| o.contains_key("foot")) {
-        xml.push_str(r#"    <tag k="foot" v="designated"/>"#);
-        xml.push('\n');
-    }
-
-    xml.push_str(&format!("  </way>",));
-    xml.push('\n');
-
-    xml
-}
-
 /// Converts an entire GeoJSON FeatureCollection to OSM XML format.
+/// Nodes are listed first, then ways — required by osmium merge.
 pub fn collection_to_osm_xml(collection: &GeoJsonFeatureCollection) -> String {
     let mut xml = String::from(
         r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -112,15 +42,81 @@ pub fn collection_to_osm_xml(collection: &GeoJsonFeatureCollection) -> String {
 "#,
     );
 
-    let mut way_offset: u64 = 1_000_000_000; // Start custom IDs high to avoid conflicts
-    let mut node_offset: u64 = 2_000_000_000;
+    // First pass: collect all nodes and prepare way data
+    let mut node_id: u64 = 2_000_000_000;
+    let mut way_id: u64 = 1_000_000_000;
+    let mut all_nodes = Vec::new();
+    #[derive(Clone)]
+    struct WayData {
+        id: u64,
+        nd_refs: Vec<u64>,
+        properties: serde_json::Value,
+    }
+    let mut ways = Vec::new();
 
     for feature in &collection.features {
-        if feature.geometry.geometry_type == "LineString" {
-            xml.push_str(&feature_to_osm_xml(feature, way_offset, node_offset));
-            way_offset += 1;
-            node_offset += (feature.geometry.coordinates.len() as u64) + 1;
+        if feature.geometry.geometry_type != "LineString" {
+            continue;
         }
+        let mut nd_refs = Vec::new();
+        for coord in &feature.geometry.coordinates {
+            if coord.len() >= 2 {
+                all_nodes.push((node_id, coord[1], coord[0]));
+                nd_refs.push(node_id);
+                node_id += 1;
+            }
+        }
+        ways.push(WayData {
+            id: way_id,
+            nd_refs,
+            properties: feature.properties.clone(),
+        });
+        way_id += 1;
+    }
+
+    // Output all nodes
+    for (id, lat, lon) in &all_nodes {
+        xml.push_str(&format!(
+            r#"  <node id="{}" lat="{}" lon="{}" version="1" visible="true"/>"#,
+            id, lat, lon
+        ));
+        xml.push('\n');
+    }
+
+    // Output all ways
+    for way in &ways {
+        xml.push_str(&format!(
+            r#"  <way id="{}" version="1" visible="true">"#,
+            way.id
+        ));
+        xml.push('\n');
+        for nd in &way.nd_refs {
+            xml.push_str(&format!("    <nd ref=\"{}\"/>\n", nd));
+        }
+        if let Some(obj) = way.properties.as_object() {
+            for (key, value) in obj {
+                let val_str = match value {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Number(n) => n.to_string(),
+                    serde_json::Value::Bool(b) => b.to_string(),
+                    _ => continue,
+                };
+                xml.push_str(&format!(
+                    r#"    <tag k="{}" v="{}"/>"#,
+                    key, val_str
+                ));
+                xml.push('\n');
+            }
+        }
+        if !way.properties.as_object().map_or(false, |o| o.contains_key("highway")) {
+            xml.push_str(r#"    <tag k="highway" v="path"/>"#);
+            xml.push('\n');
+        }
+        if !way.properties.as_object().map_or(false, |o| o.contains_key("foot")) {
+            xml.push_str(r#"    <tag k="foot" v="designated"/>"#);
+            xml.push('\n');
+        }
+        xml.push_str("  </way>\n");
     }
 
     xml.push_str("</osm>\n");

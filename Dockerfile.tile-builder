@@ -1,0 +1,37 @@
+# ============================================================
+# Stage 1: Build the Rust service
+# ============================================================
+FROM rust:1.86-slim-bookworm AS builder
+
+RUN apt-get update && apt-get install -y \
+    protobuf-compiler \
+    libprotobuf-dev \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY Cargo.toml Cargo.lock* ./
+COPY build.rs .
+COPY proto ./proto
+COPY src ./src
+
+RUN cargo build --release --locked
+
+# ============================================================
+# Stage 2: Use the existing Valhalla image (has valhalla_build_tiles)
+# ============================================================
+FROM maps-valhalla:latest
+
+RUN apt-get update && apt-get install -y \
+    osmium-tool \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY config /app/config
+
+COPY --from=builder /app/target/release/runit-maps /usr/local/bin/runit-maps
+
+WORKDIR /app
+ENTRYPOINT ["runit-maps"]

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img">
+<title>RunIt Maps — Editorial Campus</title>
+<!-- Paper background -->
+<rect width="1024" height="1024" rx="240" fill="#FEF7E0"/>
+<!-- Outer navy badge -->
+<circle cx="512" cy="460" r="260" fill="#1A2744" stroke="#E8E0D6" stroke-width="12"/>
+<!-- Inner paper ring -->
+<circle cx="512" cy="460" r="238" fill="none" stroke="#FEF7E0" stroke-width="2" opacity="0.12"/>
+<!-- Map pin shape — editorial -->
+<g transform="translate(512,460)">
+  <!-- Pin shadow -->
+  <ellipse cx="0" cy="180" rx="68" ry="14" fill="#1A2744" opacity="0.18"/>
+  <!-- Pin body -->
+  <path d="M 0 -150 C -82 -150 -148 -84 -148 -2 C -148 78 0 158 0 158 C 0 158 148 78 148 -2 C 148 -84 82 -150 0 -150 Z" fill="#FFFBF5" stroke="#E8E0D6" stroke-width="8"/>
+  <!-- Inner coral circle -->
+  <circle cx="0" cy="-28" r="78" fill="#E85D4A"/>
+  <!-- Stylized campus paths — editorial dashed -->
+  <path d="M -42 -62 C -18 -38 18 -48 42 -22" stroke="#FEF7E0" stroke-width="7" stroke-linecap="round" fill="none" opacity="0.92"/>
+  <path d="M -38 -12 L  38 -42" stroke="#F2C14E" stroke-width="6" stroke-linecap="round" stroke-dasharray="14 10" fill="none"/>
+  <!-- Serif R -->
+  <text x="0" y="-6" text-anchor="middle" font-family="Georgia, 'Newsreader', serif" font-size="92" font-weight="800" fill="white" letter-spacing="-2">R</text>
+  <!-- Small dot -->
+  <circle cx="0" cy="138" r="10" fill="#1A2744" stroke="#FFFBF5" stroke-width="3"/>
+</g>
+<!-- Wordmark -->
+<g text-anchor="middle" font-family="Inter, system-ui, sans-serif">
+  <text x="512" y="790" font-size="76" font-weight="800" fill="#1A2744" letter-spacing="-2.5">RunIt<tspan font-weight="300" letter-spacing="-1.5"> Maps</tspan></text>
+  <text x="512" y="832" font-size="18" font-weight="700" fill="#C17A56" letter-spacing="5.5">MEDILAG • EDITORIAL</text>
+  <text x="512" y="858" font-size="13" font-weight="500" fill="#9A9590" letter-spacing="0.5" font-style="italic">curated campus wandering</text>
+</g>
+<!-- Sage accent line -->
+<rect x="452" y="870" width="120" height="3" rx="1.5" fill="#8A9A8B" opacity="0.5"/>
+</svg>

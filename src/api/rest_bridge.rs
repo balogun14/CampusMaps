@@ -91,10 +91,10 @@ async fn handle_route(
     // Build Valhalla JSON request
     let mut locations = Vec::new();
     locations.push(serde_json::json!({
-        "lat": req.origin.lat, "lon": req.origin.lng, "type": "break"
+        "lat": req.origin.lat, "lon": req.origin.lng, "type": "break", "radius": 50
     }));
     locations.push(serde_json::json!({
-        "lat": req.destination.lat, "lon": req.destination.lng, "type": "break"
+        "lat": req.destination.lat, "lon": req.destination.lng, "type": "break", "radius": 50
     }));
 
     let costing = match req.costing.as_str() {
@@ -162,6 +162,7 @@ async fn handle_route(
                 "lat": s.start_location.as_ref().map(|l| l.lat).unwrap_or(0.0),
                 "lng": s.start_location.as_ref().map(|l| l.lng).unwrap_or(0.0),
             },
+            "encodedPolyline": s.encoded_polyline,
             "distanceMeters": s.distance_meters,
             "durationSeconds": s.duration_seconds,
             "direction": s.direction,
